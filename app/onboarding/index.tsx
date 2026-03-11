@@ -4,9 +4,14 @@ import {router} from "expo-router";
 import {supabase} from "../../lib/supabase";
 import RadioOption from '../../components/ui/radio-button';
 import Checkbox from '@/components/ui/checkbox';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from 'react-native';
 
 export default function Onboarding() {
     const [selected, setSelected] = useState<string | null>(null);
+    const colorScheme = useColorScheme();
+    const theme = Colors["light"];
+    const styles = createStyles(theme);
 
     const symptomOptions = [
         { key: "chestDisc", label: "Chest discomfort with exertion" },
@@ -47,8 +52,8 @@ export default function Onboarding() {
         setMedicalConditions(prev => ({...prev, [key]: !prev[key]}));
     }
     
-
     const finish = async () => { 
+        // TODO: Make it so after submitting, based on what user put in the form, run algorithm to see if they should seek medical help before starting.
         try {        
             const {
                 data: {user},
@@ -67,21 +72,16 @@ export default function Onboarding() {
                 .single()
             
             if (error) throw error;
-
-            console.log("Onboarding completed for user:", data);
-
             router.replace("/"); // go home
     } catch (err: any) {
         console.error("Onboarding finish error:", err);
         Alert.alert("Error", err?.message ?? "An error occurre", err);
     };
 };
-
-    return (
-        
+    return (        
             <ScrollView style = {styles.container}>
-                <Text style={{ fontSize: 28, fontWeight: "700" }}>Welcome 👋</Text>
-                <Text style={{ fontSize: 16 }}>
+                <Text style={{ fontSize: 28, fontWeight: "700", marginBottom: 22, marginTop: 48}}>Welcome 👋</Text>
+                <Text style={{ fontSize: 20, marginBottom: 32 }}>
                     Before we have you begin, we need to ask you a few questions. 
                 </Text>
 
@@ -91,14 +91,11 @@ export default function Onboarding() {
                 </Text>
 
                 <View style = {styles.section}>
-                    
-
                     <RadioOption
                         label = "Yes"
                         selected = {selected === "Yes"}
                         onPress = {() => setSelected("Yes")}
                     />
-
                     <RadioOption
                         label = "No"
                         selected = {selected === "No"}
@@ -106,7 +103,7 @@ export default function Onboarding() {
                     />
                 </View>
                 
-
+                {/* Second Section */}
                 <Text style = {styles.header}>
                     2. Do you experience any of the following?
                 </Text>
@@ -120,10 +117,9 @@ export default function Onboarding() {
                         onValueChange={() => toggleSymptom(option.key)}
                     />
                 ))}
-
                 </View>
                 
-
+                {/* Third Section */}
                 <Text style = {styles.header}>
                     3. Have you had or currently have any of the following medical conditions?
                 </Text>
@@ -137,22 +133,20 @@ export default function Onboarding() {
                         onValueChange={() => toggleMedicalCondition(option.key)}
                     />
                     ))}
-
                 </View>
                 
-
+            {/* Submit Button */}
             <Pressable
                 onPress={finish}
-                style={{ padding: 14, borderRadius: 10, borderWidth: 1, alignItems: "center" }}
+                style={styles.submitBtn}
             >
-                <Text style={{ fontSize: 16, fontWeight: "600" }}>Submit</Text>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: theme.tint }}>Submit</Text>
             </Pressable>
-        </ScrollView>
-        
+        </ScrollView>      
     );
 }
-
-const styles = StyleSheet.create({
+const createStyles = (theme: any) =>
+    StyleSheet.create({
     container: {
         padding: 30
     },
@@ -166,5 +160,12 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: "bold",
         marginBottom: 15
+    },
+    submitBtn: {
+        padding: 14, 
+        borderRadius: 10, 
+        borderWidth: 2, 
+        alignItems: "center",
+        borderColor: theme.tint
     }
 })

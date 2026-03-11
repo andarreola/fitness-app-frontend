@@ -1,18 +1,14 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from "react-native";
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from 'react-native';
 
 type CheckboxProps = {
-  /** Visible label shown next to the checkbox */
     label?: string;
-  /** Whether the checkbox is checked */
     value: boolean;
-  /** Called when the checkbox value changes */
     onValueChange: (newValue: boolean) => void;
-  /** Disable interaction */
     disabled?: boolean;
-  /** Additional style for the outer container */
     style?: ViewStyle;
-  /** Additional style for the label text */
     labelStyle?: TextStyle;
 };
 
@@ -24,6 +20,10 @@ export default function Checkbox({
     style,
     labelStyle,
 }: CheckboxProps) {
+    const colorScheme = useColorScheme();
+    const theme = Colors["light"];
+    const styles = createStyles(theme);
+
     const handlePress = () => {
         if (disabled) {
             return;
@@ -38,7 +38,7 @@ export default function Checkbox({
             activeOpacity={0.8}
             disabled={disabled}
         >
-        <View style={[styles.box, value && styles.boxChecked, disabled && styles.boxDisabled]}>
+        <View style={[styles.box, disabled && styles.boxDisabled]}>
             {value && <View style={styles.checkmark} />}
         </View>
         {label ? (
@@ -48,34 +48,31 @@ export default function Checkbox({
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => 
+    StyleSheet.create({
     container: {
         flexDirection: "row",
         alignItems: "center",
-        marginVertical: 8
+        marginVertical: 10
     },
     box: {
         width: 24,
         height: 24,
         borderRadius: 4,
         borderWidth: 2,
-        borderColor: "#333",
+        borderColor: theme.tint,
         backgroundColor: "transparent",
         alignItems: "center",
         justifyContent: "center",
-    },
-    boxChecked: {
-        backgroundColor: "#007AFF",
-        borderColor: "#007AFF",
     },
     boxDisabled: {
         borderColor: "#ccc",
         backgroundColor: "#f2f2f2",
     },
     checkmark: {
-        width: 12,
-        height: 12,
-        backgroundColor: "#fff",
+        width: 16,
+        height: 16,
+        backgroundColor: theme.tint,
         borderRadius: 2,
     },
     label: {
