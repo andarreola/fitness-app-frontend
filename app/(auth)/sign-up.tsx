@@ -31,7 +31,7 @@ export default function SignUp() {
 
     const { error: profileError } = await supabase
       .from("profiles")
-      .insert({ id: user.id, username });
+      .insert({ id: user.id, username, completed_onboarding: false });
 
     setLoading(false);
 
@@ -39,7 +39,7 @@ export default function SignUp() {
       return Alert.alert("Profile error", profileError.message);
     }
 
-    router.replace("/"); // go home (we'll make home require auth next)
+    router.replace("/onboarding"); // go home (we'll make home require auth next)
   };
 
   return (
