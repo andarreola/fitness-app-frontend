@@ -1,6 +1,12 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
 
-console.log("Loaded env SUPABASE_URL:", process.env.SUPABASE_URL ? "YES" : "NO");
+dotenv.config({ path: path.resolve(__dirname, ".env") });
+
+console.log(
+  "Loaded env SUPABASE_URL:",
+  process.env.SUPABASE_URL ? "YES" : "NO",
+);
 
 export default ({ config }) => ({
   ...config,
