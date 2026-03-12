@@ -18,8 +18,6 @@ export default function RadioOption({label, selected, onPress} : any) {
     );
 }
 
-
-
 const createStyles = (theme : any) => 
     StyleSheet.create({
     container: {

@@ -66,6 +66,7 @@ export default function Onboarding() {
      *   5. Has disease, asymptomatic → moderate-only (vigorous needs clearance)
      *   6. Any symptoms → BLOCKED (discontinue, seek clearance)
      */
+    
     const getOutcome = (): "light-moderate-start" | "moderate-vigorous" | "moderate-only" | "blocked" => {
         const hasAnySymptom = Object.values(symptoms).some(Boolean);
         const hasAnyMedicalCondition = Object.values(medicalConditions).some(Boolean);
@@ -122,7 +123,7 @@ export default function Onboarding() {
 
                 {/* First Section */}
                 <Text style = {styles.header}>
-                        1. Do you participate in regular exercise?
+                        1.Have you performed planned, structured physical activity for at least 30 minutes at moderate intensity on at least 3 days per week for at least the last 3 moths?
                 </Text>
 
                 <View style = {styles.section}>
