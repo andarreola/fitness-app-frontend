@@ -17,7 +17,7 @@ type ProfileRow = {
   username: string;
 };
 
-export default function HomeScreen() {
+export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
 
@@ -26,7 +26,6 @@ export default function HomeScreen() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
 
   const experienceLevel = useMemo(() => {
-    // Placeholder logic for now
     return "Novice";
   }, []);
 
@@ -88,16 +87,9 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.headerRow}>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Profile</Text>
-
-        <Pressable
-          onPress={() => router.push("/explore")}
-          style={[styles.gearButton, { borderColor: theme.tint }]}
-        >
-          <Text style={{ color: theme.tint, fontWeight: "700" }}>⚙️</Text>
-        </Pressable>
       </View>
 
-        {/* Profile Card */}
+      {/* Profile Card */}
       <View style={[styles.card, { backgroundColor: theme.card }]}>
         <View style={styles.profileRow}>
           <View style={[styles.avatar, { borderColor: theme.tint }]}>
@@ -211,12 +203,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerTitle: { fontSize: 22, fontWeight: "800" },
-  gearButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
 
   card: {
     borderRadius: 16,

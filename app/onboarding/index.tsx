@@ -52,8 +52,44 @@ export default function Onboarding() {
         setMedicalConditions(prev => ({...prev, [key]: !prev[key]}));
     }
     
-    const finish = async () => { 
-        // TODO: Make it so after submitting, based on what user put in the form, run algorithm to see if they should seek medical help before starting.
+    /**
+     * ACSM Exercise Preparticipation algorithm (Figure 2 flowchart).
+     * 6 possibilities → 3 cleared outcomes + 3 blocked:
+     *
+     * NOT active:
+     *   1. No disease, no symptoms → light-moderate-start (may progress to vigorous)
+     *   2. Has disease, asymptomatic → BLOCKED (medical clearance recommended)
+     *   3. Any symptoms → BLOCKED (medical clearance recommended)
+     *
+     * Active:
+     *   4. No disease, no symptoms → moderate-vigorous
+     *   5. Has disease, asymptomatic → moderate-only (vigorous needs clearance)
+     *   6. Any symptoms → BLOCKED (discontinue, seek clearance)
+     */
+    const getOutcome = (): "light-moderate-start" | "moderate-vigorous" | "moderate-only" | "blocked" => {
+        const hasAnySymptom = Object.values(symptoms).some(Boolean);
+        const hasAnyMedicalCondition = Object.values(medicalConditions).some(Boolean);
+        const isRegularlyActive = selected === "Yes";
+
+        if (hasAnySymptom) return "blocked";
+
+        if (!isRegularlyActive) {
+            if (!hasAnyMedicalCondition) return "light-moderate-start";
+            return "blocked";
+        }
+
+        if (isRegularlyActive) {
+            if (!hasAnyMedicalCondition) return "moderate-vigorous";
+            return "moderate-only";
+        }
+
+        return "blocked";
+    };
+
+    const finish = async () => {
+        if (selected === null) {
+            return Alert.alert("Required", "Please answer whether you participate in regular exercise.");
+        }
         try {        
             const {
                 data: {user},
@@ -64,18 +100,17 @@ export default function Onboarding() {
                 return Alert.alert("Error", "Not signed in.")
             }
 
-            const { data,error } = await supabase
-                .from("profiles")
-                .update({"completed_onboarding": true})
-                .eq("id", user.id)
-                .select()
-                .single()
-            
-            if (error) throw error;
-            router.replace("/"); // go home
+            const outcome = getOutcome();
+
+            if (outcome === "blocked") {
+                router.replace("/onboarding/not-cleared");
+                return;
+            }
+
+            router.replace({ pathname: "/onboarding/outcome", params: { outcome } });
     } catch (err: any) {
         console.error("Onboarding finish error:", err);
-        Alert.alert("Error", err?.message ?? "An error occurre", err);
+        Alert.alert("Error", err?.message ?? "An error occurred", err);
     };
 };
     return (        
