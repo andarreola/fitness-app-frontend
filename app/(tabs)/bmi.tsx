@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { supabase } from "../../lib/supabase";
 
@@ -27,6 +28,7 @@ function lbToKg(lb: number) {
   return lb * 0.45359237;
 }
 
+// BMI
 function calcBmiKgCm(weightKg: number, heightCm: number) {
   const hM = heightCm / 100;
   if (
@@ -38,70 +40,126 @@ function calcBmiKgCm(weightKg: number, heightCm: number) {
     return null;
   return weightKg / (hM * hM);
 }
-
-function bmiCategory(bmi: number) {
-  if (bmi < 18.5) return "Underweight";
-  if (bmi < 25) return "Normal weight";
-  if (bmi < 30) return "Overweight";
-  return "Obesity";
+function bmiCategoryKey(bmi: number) {
+  if (bmi < 18.5) return "under";
+  if (bmi < 25) return "healthy";
+  if (bmi < 30) return "over";
+  return "obese";
+}
+function bmiCategoryLabel(key: ReturnType<typeof bmiCategoryKey>) {
+  switch (key) {
+    case "under":
+      return "Underweight";
+    case "healthy":
+      return "Healthy";
+    case "over":
+      return "Overweight";
+    case "obese":
+      return "Obesity";
+  }
 }
 
-function Chip({
-  label,
-  active,
-  onPress,
+function UnitToggle({
+  unit,
+  setUnit,
 }: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
+  unit: UnitSystem;
+  setUnit: (u: UnitSystem) => void;
 }) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.chip, active && styles.chipActive]}
-    >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
+    <View style={styles.toggleWrap}>
+      <TouchableOpacity
+        onPress={() => setUnit("imperial")}
+        style={[
+          styles.toggleBtn,
+          unit === "imperial" && styles.toggleBtnActive,
+        ]}
+      >
+        <Text
+          style={[
+            styles.toggleText,
+            unit === "imperial" && styles.toggleTextActive,
+          ]}
+        >
+          Standard
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => setUnit("metric")}
+        style={[styles.toggleBtn, unit === "metric" && styles.toggleBtnActive]}
+      >
+        <Text
+          style={[
+            styles.toggleText,
+            unit === "metric" && styles.toggleTextActive,
+          ]}
+        >
+          Metric
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 export default function BmiScreen() {
+  const { width } = useWindowDimensions();
+  const twoCol = width >= 900;
+
   const [unit, setUnit] = useState<UnitSystem>("metric");
 
-  // metric inputs
-  const [heightCm, setHeightCm] = useState("");
-  const [weightKg, setWeightKg] = useState("");
+  // inputs
+  const [heightCm, setHeightCm] = useState("175");
+  const [weightKg, setWeightKg] = useState("80");
 
-  // imperial inputs
-  const [heightFt, setHeightFt] = useState("");
-  const [heightIn, setHeightIn] = useState("");
-  const [weightLb, setWeightLb] = useState("");
+  const [heightFt, setHeightFt] = useState("5");
+  const [heightIn, setHeightIn] = useState("9");
+  const [weightLb, setWeightLb] = useState("176");
 
-  const [saving, setSaving] = useState(false);
-
-  // normalize to cm/kg for calculations + saving
-  const height = useMemo(() => {
+  const heightCmVal = useMemo(() => {
     if (unit === "metric") return toNumber(heightCm);
     return ftInToCm(toNumber(heightFt), toNumber(heightIn));
   }, [unit, heightCm, heightFt, heightIn]);
 
-  const weight = useMemo(() => {
+  const weightKgVal = useMemo(() => {
     if (unit === "metric") return toNumber(weightKg);
     return lbToKg(toNumber(weightLb));
   }, [unit, weightKg, weightLb]);
 
-  const bmi = useMemo(() => {
-    if (!Number.isFinite(height) || !Number.isFinite(weight)) return null;
-    return calcBmiKgCm(weight, height);
-  }, [height, weight]);
+  const [calculatedBmi, setCalculatedBmi] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const category = useMemo(() => (bmi ? bmiCategory(bmi) : null), [bmi]);
+  const categoryKey = useMemo(() => {
+    if (!calculatedBmi) return null;
+    return bmiCategoryKey(calculatedBmi);
+  }, [calculatedBmi]);
 
-  async function saveResult() {
+  function onCalculate() {
+    const bmi = calcBmiKgCm(weightKgVal, heightCmVal);
     if (!bmi) {
-      Alert.alert("Invalid input", "Please enter a valid height and weight.");
+      Alert.alert("Missing info", "Please enter valid height and weight.");
+      return;
+    }
+    setCalculatedBmi(bmi);
+  }
+
+  function onReset() {
+    setCalculatedBmi(null);
+
+    // Reset to valid defaults so Calculate works immediately.
+    if (unit === "metric") {
+      setHeightCm("175");
+      setWeightKg("80");
+    } else {
+      setHeightFt("5");
+      setHeightIn("9");
+      setWeightLb("176");
+    }
+  }
+
+  async function onSave() {
+    if (!calculatedBmi) {
+      Alert.alert("Nothing to save", "Calculate your BMI first.");
       return;
     }
 
@@ -115,14 +173,14 @@ export default function BmiScreen() {
 
       const { error } = await supabase.from("bmi_entries").insert({
         user_id: userId,
-        height_cm: Number(height.toFixed(1)),
-        weight_kg: Number(weight.toFixed(1)),
-        bmi: Number(bmi.toFixed(2)),
-        category,
+        height_cm: Number(heightCmVal.toFixed(1)),
+        weight_kg: Number(weightKgVal.toFixed(1)),
+        bmi: Number(calculatedBmi.toFixed(2)),
+        category: categoryKey ? bmiCategoryLabel(categoryKey) : null,
+        // optional: unit_system: unit,
       });
 
       if (error) throw error;
-
       Alert.alert("Saved", "Your BMI entry was saved.");
     } catch (e: any) {
       Alert.alert("Save failed", e?.message ?? "Unknown error");
@@ -134,159 +192,320 @@ export default function BmiScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.container}
+      style={styles.page}
     >
-      <Text style={styles.title}>BMI Calculator</Text>
+      <View style={[styles.grid, !twoCol && styles.gridStack]}>
+        {/* Left card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderLeft}>
+            <Text style={styles.cardHeaderTitle}>BMI CALCULATOR</Text>
+          </View>
 
-      {/* Unit toggle */}
-      <View style={styles.row}>
-        <Chip
-          label="cm / kg"
-          active={unit === "metric"}
-          onPress={() => setUnit("metric")}
-        />
-        <Chip
-          label="ft / lb"
-          active={unit === "imperial"}
-          onPress={() => setUnit("imperial")}
-        />
-      </View>
+          <View style={styles.cardBody}>
+            <UnitToggle unit={unit} setUnit={setUnit} />
 
-      <View style={styles.card}>
-        {unit === "metric" ? (
-          <>
-            <Text style={styles.label}>Height (cm)</Text>
-            <TextInput
-              value={heightCm}
-              onChangeText={setHeightCm}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 175"
-              placeholderTextColor="#777"
-              style={styles.input}
-            />
+            <View style={[styles.formRow, !twoCol && styles.formRowStack]}>
+              {/* Height */}
+              <View style={styles.fieldBlock}>
+                <Text style={styles.fieldTitle}>Height</Text>
 
-            <Text style={styles.label}>Weight (kg)</Text>
-            <TextInput
-              value={weightKg}
-              onChangeText={setWeightKg}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 72.5"
-              placeholderTextColor="#777"
-              style={styles.input}
-            />
-          </>
-        ) : (
-          <>
-            <Text style={styles.label}>Height (feet)</Text>
-            <View style={styles.row}>
-              <TextInput
-                value={heightFt}
-                onChangeText={setHeightFt}
-                keyboardType="number-pad"
-                placeholder="ft"
-                placeholderTextColor="#777"
-                style={[styles.input, styles.inputHalf]}
-              />
-              <TextInput
-                value={heightIn}
-                onChangeText={setHeightIn}
-                keyboardType="number-pad"
-                placeholder="in"
-                placeholderTextColor="#777"
-                style={[styles.input, styles.inputHalf]}
-              />
+                {unit === "metric" ? (
+                  <View style={styles.inlineInput}>
+                    <TextInput
+                      value={heightCm}
+                      onChangeText={setHeightCm}
+                      keyboardType="decimal-pad"
+                      placeholder="175"
+                      style={styles.smallInput}
+                    />
+                    <Text style={styles.unitLabel}>Centimeters</Text>
+                  </View>
+                ) : (
+                  <View style={styles.inlineInput}>
+                    <TextInput
+                      value={heightFt}
+                      onChangeText={setHeightFt}
+                      keyboardType="number-pad"
+                      placeholder="5"
+                      style={[styles.smallInput, { maxWidth: 70 }]}
+                    />
+                    <Text style={styles.unitLabel}>ft</Text>
+                    <TextInput
+                      value={heightIn}
+                      onChangeText={setHeightIn}
+                      keyboardType="number-pad"
+                      placeholder="9"
+                      style={[styles.smallInput, { maxWidth: 70 }]}
+                    />
+                    <Text style={styles.unitLabel}>in</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Weight */}
+              <View style={styles.fieldBlock}>
+                <Text style={styles.fieldTitle}>Weight</Text>
+
+                {unit === "metric" ? (
+                  <View style={styles.inlineInput}>
+                    <TextInput
+                      value={weightKg}
+                      onChangeText={setWeightKg}
+                      keyboardType="decimal-pad"
+                      placeholder="80"
+                      style={styles.smallInput}
+                    />
+                    <Text style={styles.unitLabel}>Kilograms</Text>
+                  </View>
+                ) : (
+                  <View style={styles.inlineInput}>
+                    <TextInput
+                      value={weightLb}
+                      onChangeText={setWeightLb}
+                      keyboardType="decimal-pad"
+                      placeholder="176"
+                      style={styles.smallInput}
+                    />
+                    <Text style={styles.unitLabel}>Pounds</Text>
+                  </View>
+                )}
+              </View>
             </View>
 
-            <Text style={styles.label}>Weight (lb)</Text>
-            <TextInput
-              value={weightLb}
-              onChangeText={setWeightLb}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 160"
-              placeholderTextColor="#777"
-              style={styles.input}
-            />
-          </>
-        )}
+            <View style={styles.btnRow}>
+              <TouchableOpacity style={styles.primaryBtn} onPress={onCalculate}>
+                <Text style={styles.primaryBtnText}>Calculate Your BMI</Text>
+              </TouchableOpacity>
 
-        <View style={styles.resultBox}>
-          <Text style={styles.resultLabel}>Your BMI</Text>
-          <Text style={styles.resultValue}>{bmi ? bmi.toFixed(1) : "--"}</Text>
-          <Text style={styles.resultCategory}>
-            {category ?? "Enter height & weight"}
-          </Text>
+              <TouchableOpacity style={styles.secondaryBtn} onPress={onReset}>
+                <Text style={styles.secondaryBtnText}>Reset</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.secondaryBtn,
+                  (!calculatedBmi || saving) && styles.disabledBtn,
+                ]}
+                onPress={onSave}
+                disabled={!calculatedBmi || saving}
+              >
+                <Text style={styles.secondaryBtnText}>
+                  {saving ? "Saving..." : "Save"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
-        <TouchableOpacity
-          onPress={saveResult}
-          disabled={!bmi || saving}
-          style={[styles.button, (!bmi || saving) && styles.buttonDisabled]}
-        >
-          <Text style={styles.buttonText}>
-            {saving ? "Saving..." : "Save result"}
-          </Text>
-        </TouchableOpacity>
+        {/* Right card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRight}>
+            <Text style={styles.cardHeaderSmall}>YOUR BMI IS</Text>
+            <Text style={styles.cardHeaderBig}>
+              {calculatedBmi ? calculatedBmi.toFixed(1) : "--"}
+            </Text>
+          </View>
+
+          <View style={styles.table}>
+            <View style={[styles.tableRow, styles.tableHeadRow]}>
+              <Text style={[styles.tableHeadCell, { flex: 1 }]}>
+                BMI Category
+              </Text>
+              <Text style={[styles.tableHeadCell, { width: 160 }]}>
+                BMI Range
+              </Text>
+            </View>
+
+            {renderRow("under", "Underweight", "Below 18.5", categoryKey)}
+            {renderRow("healthy", "Healthy", "18.5 – 24.9", categoryKey)}
+            {renderRow("over", "Overweight", "25.0 – 29.9", categoryKey)}
+            {renderRow("obese", "Obesity", "30.0 or above", categoryKey)}
+          </View>
+
+          {categoryKey ? (
+            <Text style={styles.note}>
+              Category:{" "}
+              <Text style={styles.noteStrong}>
+                {bmiCategoryLabel(categoryKey)}
+              </Text>
+            </Text>
+          ) : (
+            <Text style={styles.note}>
+              Enter values and press “Calculate Your BMI”.
+            </Text>
+          )}
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#0b0b0c" },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "white",
-    marginTop: 16,
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  row: { flexDirection: "row", gap: 10 },
-  card: { backgroundColor: "#141416", borderRadius: 16, padding: 16 },
-  label: { color: "#c9c9cf", marginTop: 12, marginBottom: 6, fontSize: 14 },
-  input: {
-    backgroundColor: "#1d1d20",
-    borderRadius: 12,
-    padding: 12,
-    color: "white",
-    fontSize: 16,
-    flex: 1,
-  },
-  inputHalf: { flex: 1 },
-  resultBox: {
-    marginTop: 18,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: "#1a1a1d",
-  },
-  resultLabel: { color: "#c9c9cf", fontSize: 14 },
-  resultValue: {
-    color: "white",
-    fontSize: 40,
-    fontWeight: "800",
-    marginTop: 6,
-  },
-  resultCategory: { color: "white", fontSize: 16, marginTop: 6 },
-  button: {
-    marginTop: 16,
-    backgroundColor: "#3b82f6",
-    padding: 14,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: "white", fontWeight: "700", fontSize: 16 },
+function renderRow(
+  key: "under" | "healthy" | "over" | "obese",
+  label: string,
+  range: string,
+  active: null | "under" | "healthy" | "over" | "obese",
+) {
+  const isActive = active === key;
+  return (
+    <View
+      key={key}
+      style={[styles.tableRow, isActive && styles.tableRowActive]}
+    >
+      <Text
+        style={[
+          styles.tableCell,
+          { flex: 1 },
+          isActive && styles.tableCellActive,
+        ]}
+      >
+        {label}
+      </Text>
+      <Text
+        style={[
+          styles.tableCell,
+          { width: 160 },
+          isActive && styles.tableCellActive,
+        ]}
+      >
+        {range}
+      </Text>
+    </View>
+  );
+}
 
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: "#1d1d20",
+const styles = StyleSheet.create({
+  page: { flex: 1, backgroundColor: "#f4f6fb", padding: 16 },
+  grid: {
+    flexDirection: "row",
+    gap: 16,
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  gridStack: { flexDirection: "column" },
+
+  card: {
+    flex: 1,
+    maxWidth: 900,
+    backgroundColor: "white",
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#e7e9ef",
+  },
+
+  cardHeaderLeft: {
+    height: 90,
+    paddingHorizontal: 24,
+    justifyContent: "center",
+    backgroundColor: "#0a6c76",
+  },
+  cardHeaderTitle: { color: "white", fontSize: 28, fontWeight: "800" },
+
+  cardHeaderRight: {
+    height: 90,
+    paddingHorizontal: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#0b2b6e",
+  },
+  cardHeaderSmall: {
+    color: "white",
+    opacity: 0.9,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  cardHeaderBig: {
+    color: "white",
+    fontSize: 36,
+    fontWeight: "900",
+    marginTop: 4,
+  },
+
+  cardBody: { padding: 24 },
+
+  toggleWrap: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#0a6c76",
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  toggleBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    backgroundColor: "white",
+  },
+  toggleBtnActive: { backgroundColor: "#0a6c76" },
+  toggleText: { fontWeight: "800", color: "#0a6c76" },
+  toggleTextActive: { color: "white" },
+
+  formRow: { flexDirection: "row", gap: 24, marginTop: 24 },
+  formRowStack: { flexDirection: "column" },
+
+  fieldBlock: { flex: 1 },
+  fieldTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#1a1a1a",
     marginBottom: 12,
   },
-  chipActive: {
-    backgroundColor: "#2b5cff",
+
+  inlineInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
   },
-  chipText: { color: "#c9c9cf", fontWeight: "700" },
-  chipTextActive: { color: "white" },
+  smallInput: {
+    minWidth: 110,
+    borderWidth: 1,
+    borderColor: "#d9dde6",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontSize: 18,
+    backgroundColor: "white",
+  },
+  unitLabel: { fontSize: 18, color: "#1a1a1a" },
+
+  btnRow: { flexDirection: "row", gap: 16, marginTop: 30, flexWrap: "wrap" },
+  primaryBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: "#0a6c76",
+    borderWidth: 4,
+    borderColor: "#2b7cff",
+  },
+  primaryBtnText: { color: "white", fontWeight: "900", fontSize: 18 },
+  secondaryBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 999,
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: "#0a6c76",
+  },
+  secondaryBtnText: { color: "#0a6c76", fontWeight: "900", fontSize: 18 },
+  disabledBtn: { opacity: 0.5 },
+
+  table: { padding: 0 },
+  tableHeadRow: { backgroundColor: "#f6f7fb" },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderTopWidth: 1,
+    borderTopColor: "#eef0f5",
+  },
+  tableRowActive: { backgroundColor: "#e7f3f7" },
+  tableHeadCell: { fontWeight: "900", fontSize: 16, color: "#1a1a1a" },
+  tableCell: { fontSize: 18, color: "#1a1a1a", fontWeight: "700" },
+  tableCellActive: { fontWeight: "900" },
+
+  note: { padding: 18, paddingHorizontal: 24, color: "#333" },
+  noteStrong: { fontWeight: "900" },
 });
