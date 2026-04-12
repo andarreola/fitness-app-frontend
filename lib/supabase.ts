@@ -4,18 +4,20 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import "react-native-url-polyfill/auto";
 
-const extra = Constants.expoConfig?.extra as any;
+const extra = Constants.expoConfig?.extra as {
+  SUPABASE_URL?: string;
+  SUPABASE_ANON_KEY?: string;
+};
 
 const isBrowser = typeof window !== "undefined";
 
-// Storage that won’t crash in SSR
 const memoryStorage = () => {
   const store = new Map<string, string>();
   return {
     getItem: (key: string) => Promise.resolve(store.get(key) ?? null),
     setItem: (key: string, value: string) =>
-      Promise.resolve(store.set(key, value) as any),
-    removeItem: (key: string) => Promise.resolve(store.delete(key) as any),
+      Promise.resolve((store.set(key, value), null)),
+    removeItem: (key: string) => Promise.resolve((store.delete(key), null)),
   };
 };
 
@@ -24,11 +26,11 @@ const webStorage = {
     Promise.resolve(isBrowser ? window.localStorage.getItem(key) : null),
   setItem: (key: string, value: string) =>
     Promise.resolve(
-      isBrowser ? window.localStorage.setItem(key, value) : undefined,
+      isBrowser ? (window.localStorage.setItem(key, value), null) : null,
     ),
   removeItem: (key: string) =>
     Promise.resolve(
-      isBrowser ? window.localStorage.removeItem(key) : undefined,
+      isBrowser ? (window.localStorage.removeItem(key), null) : null,
     ),
 };
 
@@ -40,12 +42,11 @@ const storage =
     : AsyncStorage;
 
 export const supabase = createClient(
-  extra.SUPABASE_URL,
-  extra.SUPABASE_ANON_KEY,
+  extra.SUPABASE_URL!,
+  extra.SUPABASE_ANON_KEY!,
   {
     auth: {
       storage,
-      // only persist sessions in the browser (not during SSR)
       persistSession: Platform.OS !== "web" ? true : isBrowser,
       autoRefreshToken: Platform.OS !== "web" ? true : isBrowser,
       detectSessionInUrl: false,

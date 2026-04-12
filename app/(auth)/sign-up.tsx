@@ -34,7 +34,7 @@ export default function SignUp() {
 
     const { error: profileError } = await supabase
       .from("profiles")
-      .insert({ id: user.id, username });
+      .insert({ id: user.id, username, completed_onboarding: false });
 
     setLoading(false);
 
@@ -42,8 +42,7 @@ export default function SignUp() {
       return Alert.alert("Profile error", profileError.message);
     }
 
-    router.replace("/tos" as any);
-    ``;
+    router.replace({ pathname: "/tos" } as any);
   };
 
   return (
