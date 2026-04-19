@@ -1,6 +1,6 @@
-import { router } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import { View, Text, TextInput, Pressable, Alert } from "react-native";
+import { router } from "expo-router";
 import { supabase } from "../../lib/supabase";
 
 export default function SignUp() {
@@ -11,10 +11,7 @@ export default function SignUp() {
 
   const onSignUp = async () => {
     if (!username || !email || !password) {
-      return Alert.alert(
-        "Missing info",
-        "Username, email, and password are required.",
-      );
+      return Alert.alert("Missing info", "Username, email, and password are required.");
     }
 
     setLoading(true);
@@ -42,7 +39,7 @@ export default function SignUp() {
       return Alert.alert("Profile error", profileError.message);
     }
 
-    router.replace({ pathname: "/tos" } as any);
+    router.replace("/onboarding"); // go home (we'll make home require auth next)
   };
 
   return (
@@ -91,9 +88,7 @@ export default function SignUp() {
       </Pressable>
 
       <Pressable onPress={() => router.push("/(auth)/sign-in")}>
-        <Text style={{ textAlign: "center" }}>
-          Already have an account? Sign in
-        </Text>
+        <Text style={{ textAlign: "center" }}>Already have an account? Sign in</Text>
       </Pressable>
     </View>
   );
