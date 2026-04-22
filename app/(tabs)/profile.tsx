@@ -20,6 +20,16 @@ type ProfileRow = {
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
+  const isDark = (colorScheme ?? "light") === "dark";
+  const palette = {
+    background: theme.background,
+    card: isDark ? "#1C1F23" : "#F8FAFC",
+    border: isDark ? "#31363F" : "#E5E7EB",
+    text: theme.text,
+    muted: theme.icon,
+    accent: theme.tint,
+    accentText: isDark ? "#151718" : "#FFFFFF",
+  };
 
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
@@ -74,7 +84,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator />
+        <ActivityIndicator color={palette.accent} />
       </View>
     );
   }
@@ -86,72 +96,86 @@ export default function ProfileScreen() {
     >
       {/* Header */}
       <View style={styles.headerRow}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Profile</Text>
+        <Text style={[styles.headerTitle, { color: palette.text }]}>Profile</Text>
       </View>
 
       {/* Profile Card */}
-      <View style={[styles.card, { backgroundColor: theme.card }]}>
+      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
         <View style={styles.profileRow}>
-          <View style={[styles.avatar, { borderColor: theme.tint }]}>
-            <Text style={{ color: theme.text, fontSize: 20, fontWeight: "700" }}>
+          <View style={[styles.avatar, { borderColor: palette.accent }]}>
+            <Text style={{ color: palette.text, fontSize: 20, fontWeight: "700" }}>
               {(profile?.username?.[0] ?? "U").toUpperCase()}
             </Text>
           </View>
 
           <View style={{ flex: 1 }}>
-            <Text style={[styles.name, { color: theme.text }]}>
+            <Text style={[styles.name, { color: palette.text }]}>
               {profile?.username ?? "User"}
             </Text>
 
-            <View style={[styles.badge, { backgroundColor: theme.tint }]}>
-              <Text style={styles.badgeText}>VIP Member</Text>
+            <View style={[styles.badge, { backgroundColor: palette.accent }]}>
+              <Text style={[styles.badgeText, { color: palette.accentText }]}>VIP Member</Text>
             </View>
           </View>
         </View>
       </View>
 
       {/* Experience */}
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+      <Text style={[styles.sectionTitle, { color: palette.text }]}>
         Experience
       </Text>
 
-      <View style={[styles.card, { backgroundColor: theme.card }]}>
-        <Text style={[styles.smallLabel, { color: theme.text }]}>
+      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
+        <Text style={[styles.smallLabel, { color: palette.muted }]}>
           Experience Level
         </Text>
-        <Text style={[styles.bigValue, { color: theme.text }]}>
+        <Text style={[styles.bigValue, { color: palette.text }]}>
           {experienceLevel}
         </Text>
-        <Text style={[styles.muted, { color: theme.text }]}>
+        <Text style={[styles.muted, { color: palette.muted }]}>
           You are at the beginning of your weight lifting journey
         </Text>
       </View>
 
       {/* Account Details */}
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+      <Text style={[styles.sectionTitle, { color: palette.text }]}>
         Account Details
       </Text>
 
-      <View style={[styles.card, { backgroundColor: theme.card }]}>
-        <Row label="Email" value={email ?? "-"} themeText={theme.text} />
+      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
+        <Row
+          label="Email"
+          value={email ?? "-"}
+          themeText={palette.text}
+          borderColor={palette.border}
+          mutedColor={palette.muted}
+        />
         <Row
           label="Name"
           value={profile?.username ?? "-"}
-          themeText={theme.text}
+          themeText={palette.text}
+          borderColor={palette.border}
+          mutedColor={palette.muted}
         />
-        <Row label="Level" value={experienceLevel} themeText={theme.text} />
+        <Row
+          label="Level"
+          value={experienceLevel}
+          themeText={palette.text}
+          borderColor={palette.border}
+          mutedColor={palette.muted}
+        />
       </View>
 
       {/* Quick Actions */}
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+      <Text style={[styles.sectionTitle, { color: palette.text }]}>
         Quick Actions
       </Text>
 
       <View style={styles.actionsGrid}>
-        <ActionButton title="Update Experience" onPress={() => {}} theme={theme} />
-        <ActionButton title="Get Started" onPress={() => {}} theme={theme} />
-        <ActionButton title="Progress" onPress={() => {}} theme={theme} />
-        <ActionButton title="Sign Out" onPress={handleSignOut} theme={theme} />
+        <ActionButton title="Update Experience" onPress={() => {}} palette={palette} />
+        <ActionButton title="Get Started" onPress={() => {}} palette={palette} />
+        <ActionButton title="Progress" onPress={() => {}} palette={palette} />
+        <ActionButton title="Sign Out" onPress={handleSignOut} palette={palette} />
       </View>
     </ScrollView>
   );
@@ -161,14 +185,18 @@ function Row({
   label,
   value,
   themeText,
+  borderColor,
+  mutedColor,
 }: {
   label: string;
   value: string;
   themeText: string;
+  borderColor: string;
+  mutedColor: string;
 }) {
   return (
-    <View style={styles.row}>
-      <Text style={[styles.rowLabel, { color: themeText }]}>{label}</Text>
+    <View style={[styles.row, { borderBottomColor: borderColor }]}>
+      <Text style={[styles.rowLabel, { color: mutedColor }]}>{label}</Text>
       <Text style={[styles.rowValue, { color: themeText }]}>{value}</Text>
     </View>
   );
@@ -177,18 +205,23 @@ function Row({
 function ActionButton({
   title,
   onPress,
-  theme,
+  palette,
 }: {
   title: string;
   onPress: () => void;
-  theme: any;
+  palette: {
+    card: string;
+    border: string;
+    accent: string;
+    text: string;
+  };
 }) {
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.tint }]}
+      style={[styles.actionBtn, { backgroundColor: palette.card, borderColor: palette.accent }]}
     >
-      <Text style={{ color: theme.text, fontWeight: "700" }}>{title}</Text>
+      <Text style={{ color: palette.text, fontWeight: "700" }}>{title}</Text>
     </Pressable>
   );
 }
@@ -208,6 +241,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     marginBottom: 12,
+    borderWidth: 1,
   },
 
   profileRow: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -228,7 +262,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
   },
-  badgeText: { color: "white", fontWeight: "800", fontSize: 12 },
+  badgeText: { fontWeight: "800", fontSize: 12 },
 
   sectionTitle: { fontSize: 16, fontWeight: "800", marginTop: 8, marginBottom: 8 },
   smallLabel: { fontSize: 13, fontWeight: "600", opacity: 0.8 },
@@ -240,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(255,255,255,0.08)",
+    borderBottomColor: "transparent",
   },
   rowLabel: { fontWeight: "700", opacity: 0.75 },
   rowValue: { fontWeight: "700" },
