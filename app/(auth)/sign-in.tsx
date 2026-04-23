@@ -65,7 +65,7 @@ export default function SignIn() {
       return;
     }
 
-    if (!profile?.completed_onboarding) {
+    if (profile?.completed_onboarding !== true) {
       router.replace("/onboarding" as const);
       return;
     }

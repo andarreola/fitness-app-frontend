@@ -1,6 +1,7 @@
+import { TOS_VERSION } from "@/constants/tos";
 import { Colors, labelOnTint } from "@/constants/theme";
-import { scrollContentInsetPadding } from "@/lib/scroll-padding";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { scrollContentInsetPadding } from "@/lib/scroll-padding";
 import { supabase } from "@/lib/supabase";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
@@ -77,12 +78,55 @@ export default function OnboardingOutcomeScreen() {
         return;
       }
 
-      const { error } = await supabase
+      const { data: profile, error: profileReadErr } = await supabase
         .from("profiles")
-        .update({ completed_onboarding: true })
-        .eq("id", user.id);
+        .select("username, tos_version, tos_accepted_at")
+        .eq("id", user.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (profileReadErr) throw profileReadErr;
+
+      const metadataUsername =
+        typeof user.user_metadata?.username === "string"
+          ? user.user_metadata.username.trim()
+          : "";
+      const resolvedUsername = profile?.username?.trim() || metadataUsername;
+
+      if (!resolvedUsername) {
+        throw new Error(
+          "Username is missing for this account. Please sign out and create your account again.",
+        );
+      }
+
+      const { error: upsertErr } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: user.id,
+            username: resolvedUsername,
+            completed_onboarding: true,
+            tos_version: profile?.tos_version ?? TOS_VERSION,
+            tos_accepted_at:
+              profile?.tos_accepted_at ?? new Date().toISOString(),
+          },
+          { onConflict: "id" },
+        );
+
+      if (upsertErr) throw upsertErr;
+
+      const { data: check, error: checkErr } = await supabase
+        .from("profiles")
+        .select("completed_onboarding")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (checkErr) throw checkErr;
+      if (check?.completed_onboarding !== true) {
+        throw new Error(
+          "Could not save onboarding completion. Check RLS on public.profiles.",
+        );
+      }
+
       router.replace("/(tabs)");
     } catch (err: any) {
       Alert.alert("Error", err?.message ?? "An error occurred");

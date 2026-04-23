@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { router } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import RadioOption from "../../components/ui/radio-button";
 import Checkbox from "@/components/ui/checkbox";
+import { isTosAccepted } from "@/constants/tos";
 import { Colors, labelOnTint } from "@/constants/theme";
 import { scrollContentInsetPadding } from "@/lib/scroll-padding";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -27,6 +28,37 @@ export default function Onboarding() {
   );
 
   const [selected, setSelected] = useState<string | null>(null);
+
+  useEffect(() => {
+    const redirectIfAlreadyDone = async () => {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) return;
+
+      const { data: profile, error: profileErr } = await supabase
+        .from("profiles")
+        .select("tos_version, tos_accepted_at, completed_onboarding")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileErr) {
+        console.warn("Onboarding guard profile fetch:", profileErr);
+        return;
+      }
+
+      if (profile?.completed_onboarding === true) {
+        if (isTosAccepted(profile)) {
+          router.replace("/(tabs)");
+        } else {
+          router.replace("/tos");
+        }
+      }
+    };
+
+    void redirectIfAlreadyDone();
+  }, []);
 
   const symptomOptions = [
     { key: "chestDisc", label: "Chest discomfort with exertion" },

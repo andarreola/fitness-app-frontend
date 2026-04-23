@@ -155,7 +155,7 @@ export default function ProfileScreen() {
           mutedColor={palette.muted}
         />
         <Row
-          label="Name"
+          label="Username"
           value={profile?.username ?? "-"}
           themeText={palette.text}
           borderColor={palette.border}

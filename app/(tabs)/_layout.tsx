@@ -43,7 +43,7 @@ export default function TabLayout() {
         return;
       }
 
-      if (!profile?.completed_onboarding) {
+      if (profile?.completed_onboarding !== true) {
         router.replace({ pathname: "/onboarding" } as const);
         setAuthChecked(true);
         return;
@@ -104,6 +104,16 @@ export default function TabLayout() {
           title: "Home",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="workouts"
+        options={{
+          title: "Workouts",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="figure.run" color={color} />
           ),
         }}
       />

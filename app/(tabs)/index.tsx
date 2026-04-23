@@ -33,11 +33,34 @@ export default function Index() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
-  // This is for workout context
+  const [username, setUsername] = useState<string | null>(null);
   const [contexts, setContexts] = useState<any[]>([]);
 
-  const fetchContexts = async () => {
+  const loadHome = async () => {
     try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.warn(sessionError);
+      }
+      const session = sessionData.session;
+      if (!session) {
+        router.replace("/(auth)/sign-in");
+        return;
+      }
+
+      setEmail(session.user.email ?? null);
+
+      const { data: prof, error: profError } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (profError) {
+        console.warn("Home profile fetch:", profError);
+      }
+      setUsername(prof?.username?.trim() || null);
+
       const { data, error } = await supabase
         .from("workout_contexts")
         .select("*")
@@ -54,17 +77,7 @@ export default function Index() {
   };
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        router.replace("/(auth)/sign-in");
-      } else {
-        setEmail(data.session.user.email ?? null);
-        // This is for workout context
-        await fetchContexts();
-      }
-    };
-    checkSession();
+    void loadHome();
   }, []);
 
   const handleLogout = async () => {
@@ -92,15 +105,20 @@ export default function Index() {
           refreshing={refreshing}
           onRefresh={() => {
             setRefreshing(true);
-            fetchContexts();
+            void loadHome();
           }}
           tintColor={palette.accent}
         />
       }
     >
-      <View style={{ marginTop: 8 }}>
+      <View style={{ marginTop: 8, gap: 4 }}>
         <Text style={{ fontSize: 14, color: palette.muted }}>Logged in as:</Text>
-        <Text style={{ fontSize: 18, fontWeight: "600", color: palette.text }}>{email}</Text>
+        <Text style={{ fontSize: 18, fontWeight: "600", color: palette.text }}>
+          {username ?? email ?? "—"}
+        </Text>
+        {username && email ? (
+          <Text style={{ fontSize: 14, color: palette.muted }}>{email}</Text>
+        ) : null}
       </View>
 
       {/* This is for workout context */}
@@ -143,7 +161,7 @@ export default function Index() {
             >
               No workout contexts found.
             </Text>
-            <Button title="Try Again" color={palette.accent} onPress={fetchContexts} />
+            <Button title="Try Again" color={palette.accent} onPress={loadHome} />
           </View>
         )}
       </View>

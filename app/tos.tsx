@@ -39,12 +39,6 @@ function confirmDeclineWeb(): boolean {
   return false;
 }
 
-function defaultUsername(user: { id: string; email?: string | null }) {
-  const fromEmail = user.email?.split("@")[0]?.trim();
-  if (fromEmail && fromEmail.length >= 2) return fromEmail.slice(0, 40);
-  return `user_${user.id.replace(/-/g, "").slice(0, 12)}`;
-}
-
 export default function TosScreen() {
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -64,39 +58,49 @@ export default function TosScreen() {
         tos_accepted_at: new Date().toISOString(),
       };
 
-      const { data: updatedRows, error: updateErr } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from("profiles")
-        .update(acceptance)
+        .select("username, completed_onboarding")
         .eq("id", user.id)
-        .select("id");
+        .maybeSingle();
 
-      if (updateErr) throw updateErr;
+      if (profileErr) throw profileErr;
 
-      if (!updatedRows?.length) {
-        const username = defaultUsername(user);
-        const { error: insertErr } = await supabase.from("profiles").insert({
-          id: user.id,
-          username,
-          completed_onboarding: false,
-          ...acceptance,
-        });
+      const metadataUsername =
+        typeof user.user_metadata?.username === "string"
+          ? user.user_metadata.username.trim()
+          : "";
+      const resolvedUsername = profile?.username?.trim() || metadataUsername;
 
-        if (insertErr) {
-          const { error: retryErr } = await supabase
-            .from("profiles")
-            .update(acceptance)
-            .eq("id", user.id);
-          if (retryErr) throw insertErr;
-        }
+      if (!resolvedUsername) {
+        throw new Error(
+          "Username is missing for this account. Please sign out and create your account again.",
+        );
       }
 
-      const { data: profile } = await supabase
+      const { error: upsertErr } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: user.id,
+            username: resolvedUsername,
+            completed_onboarding: profile?.completed_onboarding ?? false,
+            ...acceptance,
+          },
+          { onConflict: "id" },
+        );
+
+      if (upsertErr) throw upsertErr;
+
+      const { data: routedProfile, error: routedProfileErr } = await supabase
         .from("profiles")
         .select("completed_onboarding")
         .eq("id", user.id)
         .maybeSingle();
 
-      if (profile?.completed_onboarding) {
+      if (routedProfileErr) throw routedProfileErr;
+
+      if (routedProfile?.completed_onboarding) {
         router.replace("/(tabs)" as const);
       } else {
         router.replace("/onboarding" as const);

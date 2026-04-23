@@ -37,7 +37,10 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
 
   const onSignUp = async () => {
-    if (!username || !email || !password) {
+    const normalizedUsername = username.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedUsername || !normalizedEmail || !password) {
       return Alert.alert(
         "Missing info",
         "Username, email, and password are required.",
@@ -46,7 +49,15 @@ export default function SignUp() {
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email: normalizedEmail,
+      password,
+      options: {
+        data: {
+          username: normalizedUsername,
+        },
+      },
+    });
 
     if (error) {
       setLoading(false);
@@ -61,7 +72,11 @@ export default function SignUp() {
 
     const { error: profileError } = await supabase
       .from("profiles")
-      .insert({ id: user.id, username, completed_onboarding: false });
+      .insert({
+        id: user.id,
+        username: normalizedUsername,
+        completed_onboarding: false,
+      });
 
     setLoading(false);
 
