@@ -9,9 +9,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { TOS_VERSION } from "@/constants/tos";
 import { supabase } from "../lib/supabase";
-
-const TOS_VERSION = "2026-03-10";
 
 const TOS_TEXT = `
 Terms of Service
@@ -23,16 +23,18 @@ Terms of Service
 `;
 
 function showAlert(title: string, message: string) {
-  if (Platform.OS === "web") {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
     window.alert(`${title}\n\n${message}`);
   } else {
     Alert.alert(title, message);
   }
 }
 
-function confirmAlert(title: string, message: string) {
-  if (Platform.OS === "web") {
-    return window.confirm(`${title}\n\n${message}`);
+function confirmDeclineWeb(): boolean {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return window.confirm(
+      "Decline Terms?\n\nYou must accept the Terms to use the app.\n\nLog out now?",
+    );
   }
   return false;
 }
@@ -48,22 +50,63 @@ export default function TosScreen() {
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr) throw userErr;
 
-      const userId = userData.user?.id;
-      if (!userId) throw new Error("No user session found.");
+      const user = userData.user;
+      if (!user?.id) throw new Error("No user session found.");
 
-      const { error } = await supabase
+      const acceptance = {
+        tos_version: TOS_VERSION,
+        tos_accepted_at: new Date().toISOString(),
+      };
+
+      const { data: profile, error: profileErr } = await supabase
         .from("profiles")
-        .update({
-          tos_version: TOS_VERSION,
-          tos_accepted_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
+        .select("username, completed_onboarding")
+        .eq("id", user.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (profileErr) throw profileErr;
 
-      router.replace({ pathname: "/(tabs)" } as any);
-    } catch (e: any) {
-      const msg = e?.message ?? "Unknown error";
+      const metadataUsername =
+        typeof user.user_metadata?.username === "string"
+          ? user.user_metadata.username.trim()
+          : "";
+      const resolvedUsername = profile?.username?.trim() || metadataUsername;
+
+      if (!resolvedUsername) {
+        throw new Error(
+          "Username is missing for this account. Please sign out and create your account again.",
+        );
+      }
+
+      const { error: upsertErr } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: user.id,
+            username: resolvedUsername,
+            completed_onboarding: profile?.completed_onboarding ?? false,
+            ...acceptance,
+          },
+          { onConflict: "id" },
+        );
+
+      if (upsertErr) throw upsertErr;
+
+      const { data: routedProfile, error: routedProfileErr } = await supabase
+        .from("profiles")
+        .select("completed_onboarding")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (routedProfileErr) throw routedProfileErr;
+
+      if (routedProfile?.completed_onboarding) {
+        router.replace("/(tabs)" as const);
+      } else {
+        router.replace("/onboarding" as const);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
       setErrorText(msg);
       showAlert("Could not save", msg);
     } finally {
@@ -75,14 +118,9 @@ export default function TosScreen() {
     setErrorText(null);
 
     if (Platform.OS === "web") {
-      const ok = confirmAlert(
-        "Decline Terms?",
-        "You must accept the Terms to use the app.\n\nLog out now?",
-      );
-      if (!ok) return;
-
+      if (!confirmDeclineWeb()) return;
       await supabase.auth.signOut();
-      router.replace({ pathname: "/(auth)/sign-in" } as any);
+      router.replace("/(auth)/sign-in" as const);
       return;
     }
 
@@ -93,57 +131,71 @@ export default function TosScreen() {
         style: "destructive",
         onPress: async () => {
           await supabase.auth.signOut();
-          router.replace({ pathname: "/(auth)/sign-in" } as any);
+          router.replace("/(auth)/sign-in" as const);
         },
       },
     ]);
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Terms of Service</Text>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Terms of Service</Text>
 
-      <ScrollView style={styles.box} contentContainerStyle={{ padding: 14 }}>
-        <Text style={styles.text}>{TOS_TEXT}</Text>
-      </ScrollView>
-
-      {errorText ? <Text style={styles.error}>{errorText}</Text> : null}
-
-      <View style={styles.row}>
-        <TouchableOpacity
-          style={styles.secondary}
-          onPress={decline}
-          disabled={saving}
+        <ScrollView
+          style={styles.box}
+          contentContainerStyle={styles.boxContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.secondaryText}>Decline</Text>
-        </TouchableOpacity>
+          <Text style={styles.text}>{TOS_TEXT}</Text>
+        </ScrollView>
 
-        <TouchableOpacity
-          style={[styles.primary, saving && { opacity: 0.6 }]}
-          onPress={accept}
-          disabled={saving}
-        >
-          <Text style={styles.primaryText}>
-            {saving ? "Saving..." : "I Agree"}
-          </Text>
-        </TouchableOpacity>
+        {errorText ? <Text style={styles.error}>{errorText}</Text> : null}
+
+        <View style={styles.row}>
+          <TouchableOpacity
+            style={styles.secondary}
+            onPress={decline}
+            disabled={saving}
+          >
+            <Text style={styles.secondaryText}>Decline</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.primary, saving && { opacity: 0.6 }]}
+            onPress={accept}
+            disabled={saving}
+          >
+            <Text style={styles.primaryText}>
+              {saving ? "Saving..." : "I Agree"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.version}>Version: {TOS_VERSION}</Text>
       </View>
-
-      <Text style={styles.version}>Version: {TOS_VERSION}</Text>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#0b0b0c" },
   container: { flex: 1, padding: 16, backgroundColor: "#0b0b0c" },
   title: {
     color: "white",
     fontSize: 24,
     fontWeight: "800",
-    marginTop: 12,
+    marginTop: 4,
     marginBottom: 12,
   },
-  box: { flex: 1, backgroundColor: "#141416", borderRadius: 14 },
+  box: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 120,
+    backgroundColor: "#141416",
+    borderRadius: 14,
+  },
+  boxContent: { padding: 14, paddingBottom: 20 },
   text: { color: "#e6e6e8", fontSize: 14, lineHeight: 20 },
   row: { flexDirection: "row", gap: 12, marginTop: 14 },
   primary: {

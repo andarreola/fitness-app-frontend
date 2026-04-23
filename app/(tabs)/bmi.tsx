@@ -8,8 +8,11 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ScrollView,
   useWindowDimensions,
 } from "react-native";
+import { Colors, labelOnTint } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { supabase } from "../../lib/supabase";
 
 type UnitSystem = "metric" | "imperial";
@@ -62,23 +65,37 @@ function bmiCategoryLabel(key: ReturnType<typeof bmiCategoryKey>) {
 function UnitToggle({
   unit,
   setUnit,
+  colors,
 }: {
   unit: UnitSystem;
   setUnit: (u: UnitSystem) => void;
+  colors: {
+    surface: string;
+    border: string;
+    text: string;
+    accent: string;
+    accentText: string;
+  };
 }) {
   return (
-    <View style={styles.toggleWrap}>
+    <View
+      style={[styles.toggleWrap, { backgroundColor: colors.surface, borderColor: colors.accent }]}
+    >
       <TouchableOpacity
         onPress={() => setUnit("imperial")}
         style={[
           styles.toggleBtn,
+          { backgroundColor: colors.surface },
           unit === "imperial" && styles.toggleBtnActive,
+          unit === "imperial" && { backgroundColor: colors.accent },
         ]}
       >
         <Text
           style={[
             styles.toggleText,
+            { color: colors.accent },
             unit === "imperial" && styles.toggleTextActive,
+            unit === "imperial" && { color: colors.accentText },
           ]}
         >
           Standard
@@ -87,12 +104,19 @@ function UnitToggle({
 
       <TouchableOpacity
         onPress={() => setUnit("metric")}
-        style={[styles.toggleBtn, unit === "metric" && styles.toggleBtnActive]}
+        style={[
+          styles.toggleBtn,
+          { backgroundColor: colors.surface },
+          unit === "metric" && styles.toggleBtnActive,
+          unit === "metric" && { backgroundColor: colors.accent },
+        ]}
       >
         <Text
           style={[
             styles.toggleText,
+            { color: colors.accent },
             unit === "metric" && styles.toggleTextActive,
+            unit === "metric" && { color: colors.accentText },
           ]}
         >
           Metric
@@ -105,6 +129,22 @@ function UnitToggle({
 export default function BmiScreen() {
   const { width } = useWindowDimensions();
   const twoCol = width >= 900;
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "light"];
+  const isDark = (colorScheme ?? "light") === "dark";
+  const colors = {
+    page: theme.background,
+    surface: isDark ? "#1C1F23" : "#FFFFFF",
+    border: isDark ? "#31363F" : "#E7E9EF",
+    text: theme.text,
+    muted: theme.icon,
+    accent: theme.tint,
+    accentText: labelOnTint(isDark),
+    tableHead: isDark ? "#252A33" : "#F6F7FB",
+    tableRowBorder: isDark ? "#31363F" : "#EEF0F5",
+    tableActive: isDark ? "#18323A" : "#E7F3F7",
+    inputBg: isDark ? "#151718" : "#FFFFFF",
+  };
 
   const [unit, setUnit] = useState<UnitSystem>("metric");
 
@@ -192,22 +232,34 @@ export default function BmiScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.page}
+      style={[styles.page, { backgroundColor: colors.page }]}
     >
-      <View style={[styles.grid, !twoCol && styles.gridStack]}>
+      <ScrollView
+        contentContainerStyle={[styles.grid, !twoCol && styles.gridStack]}
+        keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior={
+          Platform.OS === "ios" ? "automatic" : undefined
+        }
+      >
         {/* Left card */}
-        <View style={styles.card}>
+        <View
+          style={[
+            styles.card,
+            twoCol && styles.cardTwoCol,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
           <View style={styles.cardHeaderLeft}>
             <Text style={styles.cardHeaderTitle}>BMI CALCULATOR</Text>
           </View>
 
           <View style={styles.cardBody}>
-            <UnitToggle unit={unit} setUnit={setUnit} />
+            <UnitToggle unit={unit} setUnit={setUnit} colors={colors} />
 
             <View style={[styles.formRow, !twoCol && styles.formRowStack]}>
               {/* Height */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.fieldTitle}>Height</Text>
+                <Text style={[styles.fieldTitle, { color: colors.text }]}>Height</Text>
 
                 {unit === "metric" ? (
                   <View style={styles.inlineInput}>
@@ -216,9 +268,17 @@ export default function BmiScreen() {
                       onChangeText={setHeightCm}
                       keyboardType="decimal-pad"
                       placeholder="175"
-                      style={styles.smallInput}
+                      placeholderTextColor={colors.muted}
+                      style={[
+                        styles.smallInput,
+                        {
+                          color: colors.text,
+                          backgroundColor: colors.inputBg,
+                          borderColor: colors.border,
+                        },
+                      ]}
                     />
-                    <Text style={styles.unitLabel}>Centimeters</Text>
+                    <Text style={[styles.unitLabel, { color: colors.text }]}>Centimeters</Text>
                   </View>
                 ) : (
                   <View style={styles.inlineInput}>
@@ -227,24 +287,42 @@ export default function BmiScreen() {
                       onChangeText={setHeightFt}
                       keyboardType="number-pad"
                       placeholder="5"
-                      style={[styles.smallInput, { maxWidth: 70 }]}
+                      placeholderTextColor={colors.muted}
+                      style={[
+                        styles.smallInput,
+                        {
+                          maxWidth: 70,
+                          color: colors.text,
+                          backgroundColor: colors.inputBg,
+                          borderColor: colors.border,
+                        },
+                      ]}
                     />
-                    <Text style={styles.unitLabel}>ft</Text>
+                    <Text style={[styles.unitLabel, { color: colors.text }]}>ft</Text>
                     <TextInput
                       value={heightIn}
                       onChangeText={setHeightIn}
                       keyboardType="number-pad"
                       placeholder="9"
-                      style={[styles.smallInput, { maxWidth: 70 }]}
+                      placeholderTextColor={colors.muted}
+                      style={[
+                        styles.smallInput,
+                        {
+                          maxWidth: 70,
+                          color: colors.text,
+                          backgroundColor: colors.inputBg,
+                          borderColor: colors.border,
+                        },
+                      ]}
                     />
-                    <Text style={styles.unitLabel}>in</Text>
+                    <Text style={[styles.unitLabel, { color: colors.text }]}>in</Text>
                   </View>
                 )}
               </View>
 
               {/* Weight */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.fieldTitle}>Weight</Text>
+                <Text style={[styles.fieldTitle, { color: colors.text }]}>Weight</Text>
 
                 {unit === "metric" ? (
                   <View style={styles.inlineInput}>
@@ -253,9 +331,17 @@ export default function BmiScreen() {
                       onChangeText={setWeightKg}
                       keyboardType="decimal-pad"
                       placeholder="80"
-                      style={styles.smallInput}
+                      placeholderTextColor={colors.muted}
+                      style={[
+                        styles.smallInput,
+                        {
+                          color: colors.text,
+                          backgroundColor: colors.inputBg,
+                          borderColor: colors.border,
+                        },
+                      ]}
                     />
-                    <Text style={styles.unitLabel}>Kilograms</Text>
+                    <Text style={[styles.unitLabel, { color: colors.text }]}>Kilograms</Text>
                   </View>
                 ) : (
                   <View style={styles.inlineInput}>
@@ -264,32 +350,52 @@ export default function BmiScreen() {
                       onChangeText={setWeightLb}
                       keyboardType="decimal-pad"
                       placeholder="176"
-                      style={styles.smallInput}
+                      placeholderTextColor={colors.muted}
+                      style={[
+                        styles.smallInput,
+                        {
+                          color: colors.text,
+                          backgroundColor: colors.inputBg,
+                          borderColor: colors.border,
+                        },
+                      ]}
                     />
-                    <Text style={styles.unitLabel}>Pounds</Text>
+                    <Text style={[styles.unitLabel, { color: colors.text }]}>Pounds</Text>
                   </View>
                 )}
               </View>
             </View>
 
             <View style={styles.btnRow}>
-              <TouchableOpacity style={styles.primaryBtn} onPress={onCalculate}>
-                <Text style={styles.primaryBtnText}>Calculate Your BMI</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.secondaryBtn} onPress={onReset}>
-                <Text style={styles.secondaryBtnText}>Reset</Text>
+              <TouchableOpacity
+                style={[styles.primaryBtn, { backgroundColor: colors.accent, borderColor: colors.page }]}
+                onPress={onCalculate}
+              >
+                <Text style={[styles.primaryBtnText, { color: colors.accentText }]}>
+                  Calculate Your BMI
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.secondaryBtn,
+                  { backgroundColor: colors.surface, borderColor: colors.accent },
+                ]}
+                onPress={onReset}
+              >
+                <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>Reset</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.secondaryBtn,
+                  { backgroundColor: colors.surface, borderColor: colors.accent },
                   (!calculatedBmi || saving) && styles.disabledBtn,
                 ]}
                 onPress={onSave}
                 disabled={!calculatedBmi || saving}
               >
-                <Text style={styles.secondaryBtnText}>
+                <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>
                   {saving ? "Saving..." : "Save"}
                 </Text>
               </TouchableOpacity>
@@ -298,7 +404,13 @@ export default function BmiScreen() {
         </View>
 
         {/* Right card */}
-        <View style={styles.card}>
+        <View
+          style={[
+            styles.card,
+            twoCol && styles.cardTwoCol,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
           <View style={styles.cardHeaderRight}>
             <Text style={styles.cardHeaderSmall}>YOUR BMI IS</Text>
             <Text style={styles.cardHeaderBig}>
@@ -307,35 +419,35 @@ export default function BmiScreen() {
           </View>
 
           <View style={styles.table}>
-            <View style={[styles.tableRow, styles.tableHeadRow]}>
-              <Text style={[styles.tableHeadCell, { flex: 1 }]}>
+            <View style={[styles.tableRow, styles.tableHeadRow, { backgroundColor: colors.tableHead }]}>
+              <Text style={[styles.tableHeadCell, { flex: 1, color: colors.text }]}>
                 BMI Category
               </Text>
-              <Text style={[styles.tableHeadCell, { width: 160 }]}>
+              <Text style={[styles.tableHeadCell, { width: 160, color: colors.text }]}>
                 BMI Range
               </Text>
             </View>
 
-            {renderRow("under", "Underweight", "Below 18.5", categoryKey)}
-            {renderRow("healthy", "Healthy", "18.5 – 24.9", categoryKey)}
-            {renderRow("over", "Overweight", "25.0 – 29.9", categoryKey)}
-            {renderRow("obese", "Obesity", "30.0 or above", categoryKey)}
+            {renderRow("under", "Underweight", "Below 18.5", categoryKey, colors)}
+            {renderRow("healthy", "Healthy", "18.5 – 24.9", categoryKey, colors)}
+            {renderRow("over", "Overweight", "25.0 – 29.9", categoryKey, colors)}
+            {renderRow("obese", "Obesity", "30.0 or above", categoryKey, colors)}
           </View>
 
           {categoryKey ? (
-            <Text style={styles.note}>
+            <Text style={[styles.note, { color: colors.text }]}>
               Category:{" "}
               <Text style={styles.noteStrong}>
                 {bmiCategoryLabel(categoryKey)}
               </Text>
             </Text>
           ) : (
-            <Text style={styles.note}>
+            <Text style={[styles.note, { color: colors.text }]}>
               Enter values and press “Calculate Your BMI”.
             </Text>
           )}
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -345,17 +457,27 @@ function renderRow(
   label: string,
   range: string,
   active: null | "under" | "healthy" | "over" | "obese",
+  colors: {
+    text: string;
+    tableActive: string;
+    tableRowBorder: string;
+  },
 ) {
   const isActive = active === key;
   return (
     <View
       key={key}
-      style={[styles.tableRow, isActive && styles.tableRowActive]}
+      style={[
+        styles.tableRow,
+        { borderTopColor: colors.tableRowBorder },
+        isActive && styles.tableRowActive,
+        isActive && { backgroundColor: colors.tableActive },
+      ]}
     >
       <Text
         style={[
           styles.tableCell,
-          { flex: 1 },
+          { flex: 1, color: colors.text },
           isActive && styles.tableCellActive,
         ]}
       >
@@ -364,7 +486,7 @@ function renderRow(
       <Text
         style={[
           styles.tableCell,
-          { width: 160 },
+          { width: 160, color: colors.text },
           isActive && styles.tableCellActive,
         ]}
       >
@@ -381,17 +503,21 @@ const styles = StyleSheet.create({
     gap: 16,
     alignItems: "flex-start",
     justifyContent: "center",
+    paddingBottom: 24,
   },
   gridStack: { flexDirection: "column" },
 
   card: {
-    flex: 1,
-    maxWidth: 900,
+    width: "100%",
     backgroundColor: "white",
     borderRadius: 12,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#e7e9ef",
+  },
+  cardTwoCol: {
+    flex: 1,
+    maxWidth: 900,
   },
 
   cardHeaderLeft: {
@@ -467,6 +593,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontSize: 18,
+    color: "#101828",
     backgroundColor: "white",
   },
   unitLabel: { fontSize: 18, color: "#1a1a1a" },

@@ -1,15 +1,18 @@
 import { Tabs, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { isTosAccepted } from "@/constants/tos";
 import { supabase } from "@/lib/supabase";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -24,23 +27,24 @@ export default function TabLayout() {
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from("profiles")
         .select("tos_version, tos_accepted_at, completed_onboarding")
         .eq("id", session.user.id)
-        .single();
+        .maybeSingle();
 
-      const accepted =
-        profile?.tos_version === "2026-03-10" && !!profile?.tos_accepted_at;
+      if (profileErr) {
+        console.warn("Profile fetch in tab layout:", profileErr);
+      }
 
-      if (!accepted) {
-        router.replace({ pathname: "/tos" } as any);
+      if (!isTosAccepted(profile)) {
+        router.replace({ pathname: "/tos" } as const);
         setAuthChecked(true);
         return;
       }
 
-      if (!profile?.completed_onboarding) {
-        router.replace({ pathname: "/onboarding" } as any);
+      if (profile?.completed_onboarding !== true) {
+        router.replace({ pathname: "/onboarding" } as const);
         setAuthChecked(true);
         return;
       }
@@ -51,28 +55,45 @@ export default function TabLayout() {
     checkAuthTosAndOnboarding();
   }, [router]);
 
+  const bg = Colors[colorScheme ?? "light"].background;
+
   if (!authChecked) {
     return (
       <View
         style={{
           flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: Colors[colorScheme ?? "light"].background,
+          backgroundColor: bg,
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
         }}
       >
-        <ActivityIndicator
-          size="large"
-          color={Colors[colorScheme ?? "light"].tint}
-        />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: bg,
+          }}
+        >
+          <ActivityIndicator
+            size="large"
+            color={Colors[colorScheme ?? "light"].tint}
+          />
+        </View>
       </View>
     );
   }
 
   return (
+    <View style={{ flex: 1, backgroundColor: bg, paddingTop: insets.top }}>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        tabBarInactiveTintColor: Colors[colorScheme ?? "light"].tabIconDefault,
+        tabBarStyle: {
+          backgroundColor: Colors[colorScheme ?? "light"].background,
+          borderTopColor: Colors[colorScheme ?? "light"].card,
+        },
         headerShown: false,
         tabBarButton: HapticTab,
       }}
@@ -88,21 +109,21 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="bmi"
+        name="workouts"
         options={{
-          title: "BMI",
+          title: "Workouts",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="heart.fill" color={color} />
+            <IconSymbol size={28} name="figure.run" color={color} />
           ),
         }}
       />
 
       <Tabs.Screen
-        name="explore"
+        name="bmi"
         options={{
-          title: "Explore",
+          title: "BMI",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="paperplane.fill" color={color} />
+            <IconSymbol size={28} name="heart.fill" color={color} />
           ),
         }}
       />
@@ -117,5 +138,6 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </View>
   );
 }
