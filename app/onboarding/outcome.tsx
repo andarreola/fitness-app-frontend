@@ -1,9 +1,18 @@
-import { Colors } from "@/constants/theme";
+import { Colors, labelOnTint } from "@/constants/theme";
+import { scrollContentInsetPadding } from "@/lib/scroll-padding";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { supabase } from "@/lib/supabase";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
  * Outcome types from ACSM Exercise Preparticipation algorithm (Figure 2 flowchart).
@@ -46,8 +55,10 @@ const OUTCOME_CONFIG: Record<
 };
 
 export default function OnboardingOutcomeScreen() {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
+  const isDark = (colorScheme ?? "light") === "dark";
   const { outcome } = useLocalSearchParams<{ outcome: OutcomeType }>();
 
   const config =
@@ -72,7 +83,7 @@ export default function OnboardingOutcomeScreen() {
         .eq("id", user.id);
 
       if (error) throw error;
-      router.replace("/");
+      router.replace("/(tabs)");
     } catch (err: any) {
       Alert.alert("Error", err?.message ?? "An error occurred");
     } finally {
@@ -84,13 +95,18 @@ export default function OnboardingOutcomeScreen() {
     router.replace("/onboarding");
   };
 
+  const scrollPadding = scrollContentInsetPadding(insets, 6, 28);
+
   return (
+    <View style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={styles.content}
+      style={styles.container}
+      contentContainerStyle={[styles.content, scrollPadding]}
     >
       <View style={[styles.badge, { backgroundColor: theme.tint }]}>
-        <Text style={styles.badgeText}>✓ Cleared</Text>
+        <Text style={[styles.badgeText, { color: labelOnTint(isDark) }]}>
+          ✓ Cleared
+        </Text>
       </View>
 
       <Text style={[styles.title, { color: theme.text }]}>{config.title}</Text>
@@ -120,7 +136,7 @@ export default function OnboardingOutcomeScreen() {
         disabled={loading}
         style={[styles.primaryButton, { backgroundColor: theme.tint, opacity: loading ? 0.6 : 1 }]}
       >
-        <Text style={styles.primaryButtonText}>
+        <Text style={[styles.primaryButtonText, { color: labelOnTint(isDark) }]}>
           {loading ? "Continuing..." : "Continue to Home"}
         </Text>
       </Pressable>
@@ -135,16 +151,19 @@ export default function OnboardingOutcomeScreen() {
         </Text>
       </Pressable>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
   content: {
-    padding: 24,
-    paddingTop: 48,
+    paddingHorizontal: 24,
   },
   badge: {
     alignSelf: "flex-start",
@@ -154,7 +173,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   badgeText: {
-    color: "#fff",
     fontSize: 14,
     fontWeight: "700",
   },
@@ -202,7 +220,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#fff",
   },
   secondaryButton: {
     padding: 16,

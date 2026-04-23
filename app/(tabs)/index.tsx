@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Button,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -56,7 +57,7 @@ export default function Index() {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        router.replace("/sign-in");
+        router.replace("/(auth)/sign-in");
       } else {
         setEmail(data.session.user.email ?? null);
         // This is for workout context
@@ -68,7 +69,7 @@ export default function Index() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.replace("/sign-in");
+    router.replace("/(auth)/sign-in");
   };
 
   if (loading) {
@@ -83,6 +84,9 @@ export default function Index() {
     <ScrollView
       style={{ flex: 1, backgroundColor: palette.background }}
       contentContainerStyle={{ padding: 20, gap: 20 }}
+      contentInsetAdjustmentBehavior={
+        Platform.OS === "ios" ? "automatic" : undefined
+      }
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -94,7 +98,7 @@ export default function Index() {
         />
       }
     >
-      <View style={{ marginTop: 40 }}>
+      <View style={{ marginTop: 8 }}>
         <Text style={{ fontSize: 14, color: palette.muted }}>Logged in as:</Text>
         <Text style={{ fontSize: 18, fontWeight: "600", color: palette.text }}>{email}</Text>
       </View>

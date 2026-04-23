@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Colors } from "@/constants/theme";
+import { Colors, labelOnTint } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
@@ -27,7 +27,7 @@ export default function SignUp() {
     text: theme.text,
     muted: theme.icon,
     accent: theme.tint,
-    accentText: isDark ? "#151718" : "#FFFFFF",
+    accentText: labelOnTint(isDark),
     inputBg: isDark ? "#151718" : "#FFFFFF",
   };
 

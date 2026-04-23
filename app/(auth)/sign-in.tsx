@@ -11,7 +11,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Colors } from "@/constants/theme";
+import { isTosAccepted } from "@/constants/tos";
+import { Colors, labelOnTint } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
@@ -27,7 +28,7 @@ export default function SignIn() {
     text: theme.text,
     muted: theme.icon,
     accent: theme.tint,
-    accentText: isDark ? "#151718" : "#FFFFFF",
+    accentText: labelOnTint(isDark),
     inputBg: isDark ? "#151718" : "#FFFFFF",
   };
 
@@ -53,17 +54,23 @@ export default function SignIn() {
 
     const { data: profile, error: profileErr } = await supabase
       .from("profiles")
-      .select("tos_version, tos_accepted_at")
+      .select("tos_version, tos_accepted_at, completed_onboarding")
       .eq("id", userId)
       .maybeSingle();
 
     if (profileErr) return Alert.alert("Sign in failed", profileErr.message);
 
-    const accepted =
-      profile?.tos_version === "2026-03-10" && !!profile?.tos_accepted_at;
+    if (!isTosAccepted(profile)) {
+      router.replace("/tos" as const);
+      return;
+    }
 
-    if (accepted) router.replace("/(tabs)" as any);
-    else router.replace("/tos" as any);
+    if (!profile?.completed_onboarding) {
+      router.replace("/onboarding" as const);
+      return;
+    }
+
+    router.replace("/(tabs)" as const);
   };
 
   return (

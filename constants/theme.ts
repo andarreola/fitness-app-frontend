@@ -29,6 +29,11 @@ export const Colors = {
   },
 };
 
+/** primary / accent text color */
+export function labelOnTint(isDark: boolean) {
+  return isDark ? "#151718" : "#FFFFFF";
+}
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
@@ -11,18 +12,15 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: theme.background }}
-        edges={["top", "bottom"]}
-      >
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
         <StatusBar style={barStyle} backgroundColor={theme.background} />
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: theme.background },
+            contentStyle: { flex: 1, backgroundColor: theme.background },
           }}
         />
-      </SafeAreaView>
+      </View>
     </SafeAreaProvider>
   );
 }

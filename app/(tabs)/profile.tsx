@@ -6,11 +6,12 @@ import {
   Pressable,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from "react-native";
 import { router } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Colors } from "@/constants/theme";
+import { Colors, labelOnTint } from "@/constants/theme";
 
 type ProfileRow = {
   id: string;
@@ -28,7 +29,7 @@ export default function ProfileScreen() {
     text: theme.text,
     muted: theme.icon,
     accent: theme.tint,
-    accentText: isDark ? "#151718" : "#FFFFFF",
+    accentText: labelOnTint(isDark),
   };
 
   const [loading, setLoading] = useState(true);
@@ -52,7 +53,7 @@ export default function ProfileScreen() {
 
       const session = sessionData.session;
       if (!session) {
-        router.replace("/sign-in");
+        router.replace("/(auth)/sign-in");
         return;
       }
 
@@ -78,7 +79,7 @@ export default function ProfileScreen() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.replace("/sign-in");
+    router.replace("/(auth)/sign-in");
   };
 
   if (loading) {
@@ -93,6 +94,9 @@ export default function ProfileScreen() {
     <ScrollView
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+      contentInsetAdjustmentBehavior={
+        Platform.OS === "ios" ? "automatic" : undefined
+      }
     >
       {/* Header */}
       <View style={styles.headerRow}>
@@ -174,7 +178,7 @@ export default function ProfileScreen() {
       <View style={styles.actionsGrid}>
         <ActionButton title="Update Experience" onPress={() => {}} palette={palette} />
         <ActionButton title="Get Started" onPress={() => {}} palette={palette} />
-        <ActionButton title="Progress" onPress={() => {}} palette={palette} />
+        <ActionButton title="Progress" onPress={() => router.push("/progress")} palette={palette} />
         <ActionButton title="Sign Out" onPress={handleSignOut} palette={palette} />
       </View>
     </ScrollView>

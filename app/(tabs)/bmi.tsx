@@ -11,7 +11,7 @@ import {
   ScrollView,
   useWindowDimensions,
 } from "react-native";
-import { Colors } from "@/constants/theme";
+import { Colors, labelOnTint } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { supabase } from "../../lib/supabase";
 
@@ -139,7 +139,7 @@ export default function BmiScreen() {
     text: theme.text,
     muted: theme.icon,
     accent: theme.tint,
-    accentText: isDark ? "#151718" : "#FFFFFF",
+    accentText: labelOnTint(isDark),
     tableHead: isDark ? "#252A33" : "#F6F7FB",
     tableRowBorder: isDark ? "#31363F" : "#EEF0F5",
     tableActive: isDark ? "#18323A" : "#E7F3F7",
@@ -237,6 +237,9 @@ export default function BmiScreen() {
       <ScrollView
         contentContainerStyle={[styles.grid, !twoCol && styles.gridStack]}
         keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior={
+          Platform.OS === "ios" ? "automatic" : undefined
+        }
       >
         {/* Left card */}
         <View

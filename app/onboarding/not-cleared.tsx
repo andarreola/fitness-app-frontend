@@ -1,27 +1,34 @@
 import React from "react";
 import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { supabase } from "@/lib/supabase";
-import { Colors } from "@/constants/theme";
+import { Colors, labelOnTint } from "@/constants/theme";
+import { scrollContentInsetPadding } from "@/lib/scroll-padding";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function OnboardingNotClearedScreen() {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
+  const isDark = (colorScheme ?? "light") === "dark";
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.replace("/sign-in");
+    router.replace("/(auth)/sign-in");
   };
 
   const handleRetakeQuestionnaire = () => {
     router.replace("/onboarding");
   };
 
+  const scrollPadding = scrollContentInsetPadding(insets, 6, 28);
+
   return (
+    <View style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={styles.content}
+      style={styles.container}
+      contentContainerStyle={[styles.content, scrollPadding]}
     >
       <Text style={[styles.title, { color: theme.text }]}>
         Medical Clearance Required
@@ -50,7 +57,9 @@ export default function OnboardingNotClearedScreen() {
         onPress={handleRetakeQuestionnaire}
         style={[styles.primaryButton, { backgroundColor: theme.tint }]}
       >
-        <Text style={styles.primaryButtonText}>Retake Questionnaire</Text>
+        <Text style={[styles.primaryButtonText, { color: labelOnTint(isDark) }]}>
+          Retake Questionnaire
+        </Text>
       </Pressable>
 
       <Pressable
@@ -60,16 +69,19 @@ export default function OnboardingNotClearedScreen() {
         <Text style={[styles.buttonText, { color: theme.tint }]}>Sign Out</Text>
       </Pressable>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
   content: {
-    padding: 24,
-    paddingTop: 48,
+    paddingHorizontal: 24,
   },
   title: {
     fontSize: 24,
@@ -98,7 +110,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#fff",
   },
   button: {
     padding: 16,
