@@ -4,6 +4,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -12,13 +13,8 @@ import {
 } from "react-native";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { supabase } from "@/lib/supabase";
-
-type WorkoutSessionRow = {
-  id: string;
-  started_at: string | null;
-  status: string | null;
-};
+import { fetchRecentWorkoutSessions } from "@/lib/workouts";
+import type { WorkoutSessionSummary } from "@/lib/workout-types";
 
 function formatSessionTime(value: string | null) {
   if (!value) return "Time not recorded";
@@ -33,6 +29,11 @@ function formatSessionTime(value: string | null) {
 function formatStatus(status: string | null) {
   if (!status?.trim()) return "Unknown";
   return status.replace(/_/g, " ");
+}
+
+function formatCount(count: number, isLegacy: boolean) {
+  if (isLegacy) return "Legacy session";
+  return `${count} planned exercise${count === 1 ? "" : "s"}`;
 }
 
 export default function WorkoutsScreen() {
@@ -55,42 +56,24 @@ export default function WorkoutsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<WorkoutSessionRow[]>([]);
+  const [sessions, setSessions] = useState<WorkoutSessionSummary[]>([]);
 
   const loadSessions = useCallback(async () => {
     setError(null);
-    const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-    if (sessionErr) {
-      setError(sessionErr.message);
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
-    const user = sessionData.session?.user;
-    if (!user) {
-      setLoading(false);
-      setRefreshing(false);
-      router.replace("/(auth)/sign-in");
-      return;
-    }
-
-    const { data, error: fetchErr } = await supabase
-      .from("workout_sessions")
-      .select("id, started_at, status")
-      .eq("user_id", user.id)
-      .order("started_at", { ascending: false })
-      .limit(50);
-
-    if (fetchErr) {
-      setError(fetchErr.message);
+    try {
+      const rows = await fetchRecentWorkoutSessions(50);
+      setSessions(rows);
+    } catch (err: any) {
+      const message = err?.message ?? "Could not load workouts.";
+      setError(message);
       setSessions([]);
-    } else {
-      setSessions((data ?? []) as WorkoutSessionRow[]);
+      if (message.toLowerCase().includes("signed in")) {
+        router.replace("/(auth)/sign-in");
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-
-    setLoading(false);
-    setRefreshing(false);
   }, []);
 
   useFocusEffect(
@@ -127,7 +110,7 @@ export default function WorkoutsScreen() {
     >
       <Text style={[styles.title, { color: palette.text }]}>Recent workouts</Text>
       <Text style={[styles.subtitle, { color: palette.muted }]}>
-        Latest sessions saved to your account.
+        Completed sessions are shown first, with active and legacy sessions after.
       </Text>
 
       {error ? (
@@ -139,25 +122,52 @@ export default function WorkoutsScreen() {
         <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
           <Text style={{ color: palette.text, fontWeight: "600" }}>No workouts yet</Text>
           <Text style={{ color: palette.muted, marginTop: 6 }}>
-            Start a workout from Home. Completed sessions will show up here.
+            Start a workout from Home. New and completed sessions will show up here.
           </Text>
         </View>
       ) : (
         <View style={{ gap: 10 }}>
           {sessions.map((row) => (
-            <View
+            <Pressable
               key={row.id}
-              style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}
+              onPress={() =>
+                router.push({
+                  pathname: "/workout",
+                  params: { sessionId: row.id },
+                })
+              }
+              style={({ pressed }) => [
+                styles.card,
+                {
+                  backgroundColor: pressed ? palette.chipBg : palette.card,
+                  borderColor: palette.border,
+                },
+              ]}
             >
-              <Text style={[styles.sessionTime, { color: palette.text }]}>
-                {formatSessionTime(row.started_at)}
+              <Text style={[styles.contextName, { color: palette.text }]}>
+                {row.contextName}
               </Text>
-              <View style={[styles.chip, { backgroundColor: palette.chipBg }]}>
-                <Text style={[styles.chipText, { color: palette.text }]}>
-                  {formatStatus(row.status)}
-                </Text>
+              <Text style={[styles.sessionTime, { color: palette.text }]}>
+                {formatSessionTime(row.startedAt)}
+              </Text>
+              <View style={styles.metaRow}>
+                <View style={[styles.chip, { backgroundColor: palette.chipBg }]}>
+                  <Text style={[styles.chipText, { color: palette.text }]}>
+                    {formatStatus(row.status)}
+                  </Text>
+                </View>
+                {row.experienceLevelName ? (
+                  <View style={[styles.chip, { backgroundColor: palette.chipBg }]}>
+                    <Text style={[styles.chipText, { color: palette.text }]}>
+                      {row.experienceLevelName}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-            </View>
+              <Text style={[styles.sessionMeta, { color: palette.muted }]}>
+                {formatCount(row.plannedExerciseCount, row.isLegacy)}
+              </Text>
+            </Pressable>
           ))}
         </View>
       )}
@@ -175,10 +185,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
   },
-  sessionTime: { fontSize: 16, fontWeight: "700" },
+  contextName: { fontSize: 17, fontWeight: "800", marginBottom: 4 },
+  sessionTime: { fontSize: 14, fontWeight: "700" },
+  sessionMeta: { fontSize: 13, marginTop: 8 },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   chip: {
     alignSelf: "flex-start",
-    marginTop: 10,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,

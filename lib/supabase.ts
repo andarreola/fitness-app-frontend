@@ -15,23 +15,28 @@ const memoryStorage = () => {
   const store = new Map<string, string>();
   return {
     getItem: (key: string) => Promise.resolve(store.get(key) ?? null),
-    setItem: (key: string, value: string) =>
-      Promise.resolve((store.set(key, value), null)),
-    removeItem: (key: string) => Promise.resolve((store.delete(key), null)),
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+      return Promise.resolve();
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+      return Promise.resolve();
+    },
   };
 };
 
 const webStorage = {
   getItem: (key: string) =>
     Promise.resolve(isBrowser ? window.localStorage.getItem(key) : null),
-  setItem: (key: string, value: string) =>
-    Promise.resolve(
-      isBrowser ? (window.localStorage.setItem(key, value), null) : null,
-    ),
-  removeItem: (key: string) =>
-    Promise.resolve(
-      isBrowser ? (window.localStorage.removeItem(key), null) : null,
-    ),
+  setItem: (key: string, value: string) => {
+    if (isBrowser) window.localStorage.setItem(key, value);
+    return Promise.resolve();
+  },
+  removeItem: (key: string) => {
+    if (isBrowser) window.localStorage.removeItem(key);
+    return Promise.resolve();
+  },
 };
 
 const storage =
