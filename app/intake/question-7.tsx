@@ -7,16 +7,21 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useIntake } from '../context/intake-context';
 
 export default function QuestionSeven() {
-    const { updateFormData } = useIntake();
+    const { formData, updateFormData } = useIntake();
     const router = useRouter();
-
-    const [selected, setSelected] = useState<string | null>(null);
+    const [selected, setSelected] = useState<string | null>(
+        formData.daysPerWeek ? formData.daysPerWeek.toString() : null
+    );
 
     const handleBack = async () => {
         router.push('/intake/question-6');
     };
 
     const handleNext = async () => {
+        if (selected) {
+            const days = selected === '4+' ? 4 : parseInt(selected, 10);
+            await updateFormData({ daysPerWeek: days });
+        }
         router.push('/intake/question-8');
     };
 

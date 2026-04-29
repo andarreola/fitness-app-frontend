@@ -5,7 +5,42 @@ interface IntakeData {
     full_name?: string;
     age?: number;
     fitness_goal?: string;
-    completed_onboarding?: boolean //might not need this 
+    completed_onboarding?: boolean;
+    // Question 1: Body weight
+    weight?: number;
+    // Question 2: Face-to-face coaching
+    hasCoaching?: boolean;
+    // Question 3: Equipment from formal instruction
+    equipmentBodyWeight?: boolean;
+    equipmentResistanceMachines?: boolean;
+    equipmentDumbells?: boolean;
+    equipmentBarbell?: boolean;
+    // Question 4: Weight lifting ability rating
+    abilityRating?: string;
+    // Question 5: Training locations
+    locationHome?: boolean;
+    locationOutdoors?: boolean;
+    locationWork?: boolean;
+    locationGym?: boolean;
+    // Question 6: Available equipment
+    equipmentResistanceBands?: boolean;
+    equipmentPowerBands?: boolean;
+    equipmentPullUpBar?: boolean;
+    equipmentBarbells?: boolean;
+    equipmentDumbells?: boolean;
+    equipmentSquatRack?: boolean;
+    equipmentFlatBench?: boolean;
+    equipmentInclineBench?: boolean;
+    equipmentBoxes?: boolean;
+    equipmentMedicineBall?: boolean;
+    hasBumperPlates?: boolean;
+    heavyDumbbells?: boolean;
+    rackAdjustable?: boolean;
+    rackSafetyBars?: boolean;
+    // Question 7: Days per week
+    daysPerWeek?: number;
+    // Question 8: Time per day
+    timePerDay?: number;
 }
 
 interface IntakeContextType {

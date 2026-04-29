@@ -7,7 +7,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useIntake } from '../context/intake-context';
 
 export default function QuestionSix() {
-    const { updateFormData } = useIntake();
+    const { formData, updateFormData } = useIntake();
     const router = useRouter();
 
     const handleBack = async () => {
@@ -15,6 +15,22 @@ export default function QuestionSix() {
     };
 
     const handleNext = async () => {
+        await updateFormData({
+            equipmentResistanceBands: equipment.resistanceBands,
+            equipmentPowerBands: equipment.powerBands,
+            equipmentPullUpBar: equipment.pullUpBar,
+            equipmentBarbells: equipment.barbell,
+            equipmentDumbells: equipment.dumbells,
+            equipmentSquatRack: equipment.squatRack,
+            equipmentFlatBench: equipment.flatBench,
+            equipmentInclineBench: equipment.inclineBench,
+            equipmentBoxes: equipment.boxes,
+            equipmentMedicineBall: equipment.medicineBall,
+            hasBumperPlates: equipment.hasBumperPlates,
+            heavyDumbbells: equipment.heavyDumbbells,
+            rackAdjustable: equipment.rackAdjustable,
+            rackSafetyBars: equipment.rackSafetyBars,
+        });
         router.push('/intake/question-7');
     };
 
@@ -32,13 +48,20 @@ export default function QuestionSix() {
     ];
 
     const [equipment, setEquipment] = useState<Record<string, boolean>>({
-        ...equipmentOptions.reduce((acc, opt) => ({ ...acc, [opt.key]: false }), {}),
-        hasBumperPlates: false,
-        adjustableRack: false,
-        hasSafetyBars: false,
-        fullCage: false,
-        openFace: false,
-        heavyDumbbells: false,
+        resistanceBands: formData.equipmentResistanceBands || false,
+        powerBands: formData.equipmentPowerBands || false,
+        pullUpBar: formData.equipmentPullUpBar || false,
+        barbell: formData.equipmentBarbells || false,
+        dumbells: formData.equipmentDumbells || false,
+        squatRack: formData.equipmentSquatRack || false,
+        flatBench: formData.equipmentFlatBench || false,
+        inclineBench: formData.equipmentInclineBench || false,
+        boxes: formData.equipmentBoxes || false,
+        medicineBall: formData.equipmentMedicineBall || false,
+        hasBumperPlates: formData.hasBumperPlates || false,
+        heavyDumbbells: formData.heavyDumbbells || false,
+        rackAdjustable: formData.rackAdjustable || false,
+        rackSafetyBars: formData.rackSafetyBars || false,
     });
 
     const toggleKey = (key: string) => {

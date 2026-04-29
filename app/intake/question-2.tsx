@@ -8,10 +8,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useIntake } from '../context/intake-context';
 
 export default function QuestionTwo() {
-    const { updateFormData } = useIntake();
+    const { formData, updateFormData } = useIntake();
     const router = useRouter();
-
-    const [selected, setSelected] = useState<string | null>(null);
+    const [selected, setSelected] = useState<string | null>(formData.hasCoaching ? 'Yes' : 'No');
 
     const handleBack = async () => {
         router.push('/intake/question-1');
@@ -19,8 +18,10 @@ export default function QuestionTwo() {
 
     const handleNext = async () => {
         if (selected === 'Yes') {
+            await updateFormData({ hasCoaching: true });
             router.push('/intake/question-3');
         } else if (selected === 'No') {
+            await updateFormData({ hasCoaching: false });
             router.push('/intake/question-4');
         } else {
             alert('Please select an option before proceeding.');

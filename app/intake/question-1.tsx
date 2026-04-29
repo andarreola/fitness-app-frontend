@@ -1,14 +1,20 @@
 // This is the question that relates to what the user's weight is.
 
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useIntake } from '../context/intake-context';
 
 export default function QuestionOne() {
-    const { updateFormData } = useIntake();
+    const { formData, updateFormData } = useIntake();
     const router = useRouter();
+    const [weight, setWeight] = useState(formData.weight?.toString() || '');
 
     const handleNext = async () => {
+        const weightNum = parseFloat(weight);
+        if (!isNaN(weightNum)) {
+            await updateFormData({ weight: weightNum });
+        }
         router.push('/intake/question-2');
     };
 
@@ -19,6 +25,8 @@ export default function QuestionOne() {
                 style={styles.textInput}
                 keyboardType="number-pad"
                 placeholder="Enter body weight"
+                value={weight}
+                onChangeText={setWeight}
             />
             <Pressable style={styles.nextButton} onPress={handleNext}>
                 <Text style={styles.buttonText}>Next</Text>

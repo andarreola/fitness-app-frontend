@@ -127,7 +127,7 @@ export default function OnboardingOutcomeScreen() {
         );
       }
 
-      router.replace("/(tabs)");
+      router.replace("../intake");
     } catch (err: any) {
       Alert.alert("Error", err?.message ?? "An error occurred");
     } finally {

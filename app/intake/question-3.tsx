@@ -7,7 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useIntake } from '../context/intake-context';
 
 export default function QuestionThree() {
-    const { updateFormData } = useIntake();
+    const { formData, updateFormData } = useIntake();
     const router = useRouter();
 
     const handleBack = async () => {
@@ -15,6 +15,12 @@ export default function QuestionThree() {
     };
 
     const handleNext = async () => {
+        await updateFormData({
+            equipmentBodyWeight: equipment.bodyWeight,
+            equipmentResistanceMachines: equipment.resistantMachines,
+            equipmentDumbells: equipment.dumbellExercises,
+            equipmentBarbell: equipment.barbellExercises,
+        });
         router.push('/intake/question-4');
     };
 
@@ -25,9 +31,12 @@ export default function QuestionThree() {
         { key: 'barbellExercises', label: 'Barbell exercises like barbell back squat and barbell bench press' },
     ];
 
-    const [equipment, setEquipment] = useState<Record<string, boolean>>(() =>
-        equipmentOptions.reduce((acc, opt) => ({ ...acc, [opt.key]: false }), {})
-    );
+    const [equipment, setEquipment] = useState<Record<string, boolean>>(() => ({
+        bodyWeight: formData.equipmentBodyWeight || false,
+        resistantMachines: formData.equipmentResistanceMachines || false,
+        dumbellExercises: formData.equipmentDumbells || false,
+        barbellExercises: formData.equipmentBarbell || false,
+    }));
 
     return (
         <View style={{ flex: 1, padding: 20 }}>

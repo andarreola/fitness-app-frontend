@@ -16,16 +16,18 @@ export default function QuestionFour() {
      * REFER TO Virtual Personal Trainer intake form
      */
 
-    const { updateFormData } = useIntake();
+    const { formData, updateFormData } = useIntake();
     const router = useRouter();
-
-    const [selected, setSelected] = useState<string | null>(null);
+    const [selected, setSelected] = useState<string | null>(formData.abilityRating || null);
 
     const handleBack = async () => {
         router.push('/intake/question-2');
     };
 
     const handleNext = async () => {
+        if (selected) {
+            await updateFormData({ abilityRating: selected });
+        }
         router.push('/intake/question-5');
     };
 

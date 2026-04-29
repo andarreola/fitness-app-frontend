@@ -7,7 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useIntake } from '../context/intake-context';
 
 export default function QuestionFive() {
-    const { updateFormData } = useIntake();
+    const { formData, updateFormData } = useIntake();
     const router = useRouter();
 
     const handleBack = async () => {
@@ -15,6 +15,12 @@ export default function QuestionFive() {
     };
 
     const handleNext = async () => {
+        await updateFormData({
+            locationHome: location.home,
+            locationOutdoors: location.outdoors,
+            locationWork: location.atWork,
+            locationGym: location.gym,
+        });
         router.push('/intake/question-6');
     };
 
@@ -25,9 +31,12 @@ export default function QuestionFive() {
         { key: 'gym', label: 'At a gym' },
     ];
 
-    const [location, setLocation] = useState<Record<string, boolean>>(() =>
-        locationOptions.reduce((acc, opt) => ({ ...acc, [opt.key]: false }), {})
-    );
+    const [location, setLocation] = useState<Record<string, boolean>>(() => ({
+        home: formData.locationHome || false,
+        outdoors: formData.locationOutdoors || false,
+        atWork: formData.locationWork || false,
+        gym: formData.locationGym || false,
+    }));
 
     return (
         <View style={{ flex: 1, padding: 20 }}>
