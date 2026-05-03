@@ -14,6 +14,7 @@ import {
 import { Colors, labelOnTint } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { supabase } from "../../lib/supabase";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type UnitSystem = "metric" | "imperial";
 
@@ -128,22 +129,24 @@ function UnitToggle({
 
 export default function BmiScreen() {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const twoCol = width >= 900;
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
-  const isDark = (colorScheme ?? "light") === "dark";
+  const scheme = colorScheme === "dark" ? "dark" : "light";
+  const theme = Colors[scheme];
+  const isDark = scheme === "dark";
   const colors = {
-    page: theme.background,
-    surface: isDark ? "#1C1F23" : "#FFFFFF",
-    border: isDark ? "#31363F" : "#E7E9EF",
-    text: theme.text,
-    muted: theme.icon,
-    accent: theme.tint,
+    page: theme.ui.screen,
+    surface: theme.ui.surface,
+    border: theme.ui.border,
+    text: theme.ui.textPrimary,
+    muted: theme.ui.textSecondary,
+    accent: theme.ui.highlight,
     accentText: labelOnTint(isDark),
-    tableHead: isDark ? "#252A33" : "#F6F7FB",
-    tableRowBorder: isDark ? "#31363F" : "#EEF0F5",
-    tableActive: isDark ? "#18323A" : "#E7F3F7",
-    inputBg: isDark ? "#151718" : "#FFFFFF",
+    tableHead: theme.ui.elevated,
+    tableRowBorder: theme.ui.border,
+    tableActive: theme.ui.optionSelected,
+    inputBg: theme.ui.elevated,
   };
 
   const [unit, setUnit] = useState<UnitSystem>("metric");
@@ -232,7 +235,7 @@ export default function BmiScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={[styles.page, { backgroundColor: colors.page }]}
+      style={[styles.page, { backgroundColor: colors.page, paddingTop: insets.top + 8 }]}
     >
       <ScrollView
         contentContainerStyle={[styles.grid, !twoCol && styles.gridStack]}

@@ -1,6 +1,7 @@
 //Note that this screen is only used when formal face-to-face coaching/instruction IS received by the user
 
 import CheckboxOption from '@/components/ui/checkbox';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -48,7 +49,7 @@ export default function QuestionFive() {
             </View>
             <View style={styles.buttonRow}>
                 <Pressable style={styles.backButton} onPress={handleBack}>
-                    <Text style={styles.buttonText}>Back</Text>
+                    <IconSymbol name="chevron.left" size={16} color="#111827" />
                 </Pressable>
                 <Pressable style={styles.nextButton} onPress={handleNext}>
                     <Text style={[styles.buttonText, { color: 'white' }]}>Next</Text>
@@ -65,11 +66,13 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
     backButton: {
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 8,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         borderWidth: 1,
         borderColor: '#ccc',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     nextButton: {
         paddingVertical: 12,

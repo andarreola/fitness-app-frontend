@@ -1,81 +1,128 @@
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  ScrollView,
-  Platform,
-} from "react-native";
-import { router } from "expo-router";
-import { supabase } from "@/lib/supabase";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Colors, labelOnTint } from "@/constants/theme";
+import { supabase } from "@/lib/supabase";
+import { useFocusEffect } from "@react-navigation/native";
+import { router } from "expo-router";
+import React, { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 type ProfileRow = {
   id: string;
   username: string;
+  experience_level_id: number | null;
+  experience_levels: { display_name: string; code: string } | null;
 };
+
+function normalizeProfileRow(raw: unknown): ProfileRow | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const id = r.id;
+  const username = r.username;
+  const experience_level_id = r.experience_level_id;
+  if (typeof id !== "string" || typeof username !== "string") return null;
+
+  let nested = r.experience_levels;
+  if (Array.isArray(nested)) nested = nested[0] ?? null;
+  let experience_levels: ProfileRow["experience_levels"] = null;
+  if (nested && typeof nested === "object") {
+    const n = nested as Record<string, unknown>;
+    const display_name = n.display_name;
+    const code = n.code;
+    if (typeof display_name === "string" && typeof code === "string") {
+      experience_levels = { display_name, code };
+    }
+  }
+
+  const elid = experience_level_id;
+  const parsedId =
+    typeof elid === "number"
+      ? elid
+      : elid != null && String(elid).trim() !== ""
+        ? Number(elid)
+        : null;
+
+  return {
+    id,
+    username,
+    experience_level_id: Number.isFinite(parsedId) ? parsedId : null,
+    experience_levels,
+  };
+}
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
-  const isDark = (colorScheme ?? "light") === "dark";
+  const scheme = colorScheme === "dark" ? "dark" : "light";
+  const theme = Colors[scheme];
   const palette = {
-    background: theme.background,
-    card: isDark ? "#1C1F23" : "#F8FAFC",
-    border: isDark ? "#31363F" : "#E5E7EB",
-    text: theme.text,
-    muted: theme.icon,
-    accent: theme.tint,
-    accentText: labelOnTint(isDark),
+    background: theme.ui.screen,
+    card: theme.ui.surface,
+    border: theme.ui.border,
+    text: theme.ui.textPrimary,
+    muted: theme.ui.textSecondary,
+    accent: theme.ui.highlight,
+    accentText: "#0A1A34",
+    cardSoft: theme.ui.elevated,
   };
 
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
 
-  const experienceLevel = useMemo(() => {
-    return "Novice";
-  }, []);
+  const experienceLevelLabel =
+    profile?.experience_levels?.display_name?.trim() ??
+    (profile?.experience_level_id != null ? "Unknown" : "Not set");
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+  const loadProfile = useCallback(async () => {
+    setLoading(true);
 
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
 
-      if (sessionError) {
-        console.warn(sessionError);
-      }
+    if (sessionError) {
+      console.warn(sessionError);
+    }
 
-      const session = sessionData.session;
-      if (!session) {
-        router.replace("/(auth)/sign-in");
-        return;
-      }
-
-      setEmail(session.user.email ?? null);
-
-      const { data: prof, error: profError } = await supabase
-        .from("profiles")
-        .select("id, username")
-        .eq("id", session.user.id)
-        .single();
-
-      if (profError) {
-        console.warn(profError);
-      } else {
-        setProfile(prof);
-      }
-
+    const session = sessionData.session;
+    if (!session) {
+      router.replace("/(auth)/sign-in");
       setLoading(false);
-    };
+      return;
+    }
 
-    load();
+    setEmail(session.user.email ?? null);
+
+    const { data: prof, error: profError } = await supabase
+      .from("profiles")
+      .select(
+        "id, username, experience_level_id, experience_levels ( display_name, code )",
+      )
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    if (profError) {
+      console.warn(profError);
+      setProfile(null);
+    } else {
+      setProfile(normalizeProfileRow(prof));
+    }
+
+    setLoading(false);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadProfile();
+    }, [loadProfile]),
+  );
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -84,7 +131,7 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
+      <View style={[styles.center, { backgroundColor: palette.background }]}>
         <ActivityIndicator color={palette.accent} />
       </View>
     );
@@ -92,18 +139,22 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: theme.background }}
+      style={{ backgroundColor: palette.background }}
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
       contentInsetAdjustmentBehavior={
         Platform.OS === "ios" ? "automatic" : undefined
       }
     >
-      {/* Header */}
       <View style={styles.headerRow}>
         <Text style={[styles.headerTitle, { color: palette.text }]}>Profile</Text>
+        <Pressable
+          style={[styles.settingsIconBtn, { borderColor: palette.border, backgroundColor: palette.cardSoft }]}
+          onPress={() => router.push("/settings")}
+        >
+          <IconSymbol name="gearshape.fill" size={20} color={palette.accent} />
+        </Pressable>
       </View>
 
-      {/* Profile Card */}
       <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
         <View style={styles.profileRow}>
           <View style={[styles.avatar, { borderColor: palette.accent }]}>
@@ -124,24 +175,24 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Experience */}
       <Text style={[styles.sectionTitle, { color: palette.text }]}>
-        Experience
+        Experience level
       </Text>
 
       <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
         <Text style={[styles.smallLabel, { color: palette.muted }]}>
-          Experience Level
+          Current
         </Text>
         <Text style={[styles.bigValue, { color: palette.text }]}>
-          {experienceLevel}
+          {experienceLevelLabel}
         </Text>
-        <Text style={[styles.muted, { color: palette.muted }]}>
-          You are at the beginning of your weight lifting journey
-        </Text>
+        {!profile?.experience_levels?.display_name ? (
+          <Text style={[styles.muted, { color: palette.muted }]}>
+            Use Update Experience below to set or change your level.
+          </Text>
+        ) : null}
       </View>
 
-      {/* Account Details */}
       <Text style={[styles.sectionTitle, { color: palette.text }]}>
         Account Details
       </Text>
@@ -163,20 +214,19 @@ export default function ProfileScreen() {
         />
         <Row
           label="Level"
-          value={experienceLevel}
+          value={experienceLevelLabel}
           themeText={palette.text}
           borderColor={palette.border}
           mutedColor={palette.muted}
         />
       </View>
 
-      {/* Quick Actions */}
       <Text style={[styles.sectionTitle, { color: palette.text }]}>
         Quick Actions
       </Text>
 
       <View style={styles.actionsGrid}>
-        <ActionButton title="Update Experience" onPress={() => {}} palette={palette} />
+        <ActionButton title="Update Experience" onPress={() => router.push("/experience")} palette={palette} />
         <ActionButton title="Get Started" onPress={() => {}} palette={palette} />
         <ActionButton title="Progress" onPress={() => router.push("/progress")} palette={palette} />
         <ActionButton title="Sign Out" onPress={handleSignOut} palette={palette} />
@@ -240,6 +290,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerTitle: { fontSize: 22, fontWeight: "800" },
+  settingsIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   card: {
     borderRadius: 16,

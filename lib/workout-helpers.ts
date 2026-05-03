@@ -43,10 +43,14 @@ export function rowLookupKey(row: JsonRecord | null | undefined) {
 
 export function findById<T extends JsonRecord>(
   rows: T[],
-  id: string | null | undefined,
+  id: string | number | null | undefined,
 ) {
-  if (!id) return null;
-  return rows.find((row) => row.id === id) ?? null;
+  if (id === null || id === undefined || id === "") return null;
+  const key = String(id);
+  return (
+    rows.find((row) => row.id !== undefined && row.id !== null && String(row.id) === key) ??
+    null
+  );
 }
 
 export function findLookupRow<T extends JsonRecord>(

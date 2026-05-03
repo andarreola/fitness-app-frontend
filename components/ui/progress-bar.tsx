@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet, Dimensions } from 'react-native';
+import { View, Animated, StyleSheet } from 'react-native';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // 1. Define the Types for TypeScript
 interface ProgressBarProps {
@@ -8,6 +10,8 @@ interface ProgressBarProps {
 }
 
 export const ProgressBar = ({ step, totalSteps }: ProgressBarProps) => {
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
   // 2. Initialize the animated value
   // We start it at the current step's fraction
     const animatedWidth = useRef(new Animated.Value(step / totalSteps)).current;
@@ -29,8 +33,8 @@ export const ProgressBar = ({ step, totalSteps }: ProgressBarProps) => {
 
   // 5. CRITICAL: The 'return' keyword fixes your error
     return (
-        <View style={styles.container}>
-            <Animated.View style={[styles.bar, { width }]} />
+        <View style={[styles.container, { backgroundColor: theme.ui.border }]}>
+            <Animated.View style={[styles.bar, { width, backgroundColor: theme.ui.highlight }]} />
         </View>
     );
 };
@@ -39,13 +43,11 @@ const styles = StyleSheet.create({
     container: {
         height: 8,
         width: '100%',
-        backgroundColor: '#E5E7EB', // Light gray background
         borderRadius: 4,
         overflow: 'hidden',
     },
     bar: {
         height: '100%',
-        backgroundColor: '#0a7ea4', // Blue progress color (Tailwind-style blue-500)
         borderRadius: 4,
     },
 });

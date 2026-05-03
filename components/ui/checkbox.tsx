@@ -46,7 +46,13 @@ export default function Checkbox({
       activeOpacity={0.8}
       disabled={disabled}
     >
-      <View style={[styles.box, disabled && styles.boxDisabled]}>
+      <View
+        style={[
+          styles.box,
+          value && styles.boxSelected,
+          disabled && styles.boxDisabled,
+        ]}
+      >
         {value ? <View style={styles.checkmark} /> : null}
       </View>
       {label ? (
@@ -69,36 +75,47 @@ const createStyles = (theme: (typeof Colors)["light"], isDark: boolean) =>
     container: {
       flexDirection: "row",
       alignItems: "flex-start",
-      marginVertical: 10,
+      marginVertical: 6,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.ui.border,
+      backgroundColor: theme.ui.optionUnselected,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
     },
     containerDisabled: {
       opacity: 0.55,
     },
     box: {
-      width: 24,
-      height: 24,
-      borderRadius: 4,
+      width: 22,
+      height: 22,
+      borderRadius: 6,
       borderWidth: 2,
-      borderColor: theme.tint,
+      borderColor: theme.ui.textSecondary,
       backgroundColor: "transparent",
       alignItems: "center",
       justifyContent: "center",
+      marginTop: 1,
+    },
+    boxSelected: {
+      borderColor: theme.ui.accent,
+      backgroundColor: theme.ui.accentSoft,
     },
     boxDisabled: {
       borderColor: isDark ? "#4B5563" : "#ccc",
       backgroundColor: isDark ? "#1F2937" : "#f2f2f2",
     },
     checkmark: {
-      width: 16,
-      height: 16,
-      backgroundColor: theme.tint,
-      borderRadius: 2,
+      width: 10,
+      height: 10,
+      backgroundColor: theme.ui.accent,
+      borderRadius: 5,
     },
     label: {
       marginLeft: 10,
       fontSize: 16,
       lineHeight: 22,
-      color: theme.text,
+      color: theme.ui.textPrimary,
       flex: 1,
     },
     labelDisabled: {

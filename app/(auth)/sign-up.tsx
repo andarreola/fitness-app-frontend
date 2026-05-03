@@ -11,24 +11,24 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Colors, labelOnTint } from "@/constants/theme";
+import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 
 export default function SignUp() {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
-  const isDark = (colorScheme ?? "light") === "dark";
+  const scheme = colorScheme === "dark" ? "dark" : "light";
+  const theme = Colors[scheme];
   const palette = {
-    background: theme.background,
-    card: isDark ? "#1C1F23" : "#F8FAFC",
-    border: isDark ? "#31363F" : "#D9DEE8",
-    text: theme.text,
-    muted: theme.icon,
-    accent: theme.tint,
-    accentText: labelOnTint(isDark),
-    inputBg: isDark ? "#151718" : "#FFFFFF",
+    background: theme.ui.screen,
+    card: theme.ui.surface,
+    border: theme.ui.border,
+    text: theme.ui.textPrimary,
+    muted: theme.ui.textSecondary,
+    accent: theme.ui.highlight,
+    accentText: "#0A1A34",
+    inputBg: theme.ui.elevated,
   };
 
   const [username, setUsername] = useState("");
@@ -88,7 +88,7 @@ export default function SignUp() {
   };
 
   return (
-    <SafeAreaView style={[styles.page, { backgroundColor: palette.background }]} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.page, { backgroundColor: palette.background }]} edges={["top", "bottom", "left", "right"]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -159,7 +159,7 @@ export default function SignUp() {
                 styles.primaryBtn,
                 {
                   backgroundColor: palette.accent,
-                  borderColor: palette.accent,
+                  borderColor: palette.border,
                   opacity: loading ? 0.6 : 1,
                 },
               ]}
@@ -169,7 +169,7 @@ export default function SignUp() {
               </Text>
             </Pressable>
 
-            <Pressable onPress={() => router.push("/(auth)/sign-in")}>
+            <Pressable onPress={() => router.push("/(auth)/sign-in")} style={[styles.secondaryBtn, { borderColor: palette.border, backgroundColor: palette.card }]}>
               <Text style={[styles.linkText, { color: palette.accent }]}>
                 Already have an account? Sign in
               </Text>
@@ -213,4 +213,9 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { fontSize: 16, fontWeight: "700" },
   linkText: { textAlign: "center", fontWeight: "600" },
+  secondaryBtn: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+  },
 });

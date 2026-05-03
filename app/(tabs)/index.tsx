@@ -1,8 +1,10 @@
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   Platform,
   Pressable,
   RefreshControl,
@@ -11,22 +13,22 @@ import {
   Text,
   View,
 } from "react-native";
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { supabase } from "../../lib/supabase";
 
 export default function Index() {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
-  const isDark = (colorScheme ?? "light") === "dark";
+  const scheme = colorScheme === "dark" ? "dark" : "light";
+  const theme = Colors[scheme];
+  const isDark = scheme === "dark";
   const palette = {
-    background: theme.background,
-    card: isDark ? "#1C1F23" : "#F8FAFC",
-    cardPressed: isDark ? "#252A33" : "#EEF2F7",
-    border: isDark ? "#31363F" : "#E5E7EB",
-    text: theme.text,
-    muted: theme.icon,
-    accent: theme.tint,
+    background: theme.ui.screen,
+    card: theme.ui.surface,
+    cardPressed: theme.ui.optionSelected,
+    border: theme.ui.border,
+    text: theme.ui.textPrimary,
+    muted: theme.ui.textSecondary,
+    accent: theme.ui.highlight,
+    accentText: "#0A1A34",
     danger: "#EF4444",
   };
 
@@ -34,8 +36,6 @@ export default function Index() {
   const [refreshing, setRefreshing] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
-  const [contexts, setContexts] = useState<any[]>([]);
-
   const loadHome = async () => {
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -61,13 +61,6 @@ export default function Index() {
       }
       setUsername(prof?.username?.trim() || null);
 
-      const { data, error } = await supabase
-        .from("workout_contexts")
-        .select("*")
-        .order("sort_order", { ascending: true });
-
-      if (error) throw error;
-      setContexts(data || []);
     } catch (err) {
       console.error("Fetch error:", err);
     } finally {
@@ -121,49 +114,32 @@ export default function Index() {
         ) : null}
       </View>
 
-      {/* This is for workout context */}
       <View style={{ gap: 15, marginTop: 10 }}>
         <Text style={{ fontSize: 24, fontWeight: "800", color: palette.text }}>Start a Workout</Text>
         <Text style={{ fontSize: 16, color: palette.muted }}>
-          Where are you training today?
+          
         </Text>
-
-        {contexts.length > 0 ? (
-          contexts.map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() =>
-                router.push({
-                  pathname: "/workout",
-                  params: { contextId: item.id },
-                })
-              }
-              style={({ pressed }) => ({
-                padding: 20,
-                borderRadius: 15,
-                backgroundColor: pressed ? palette.cardPressed : palette.card,
-                borderWidth: 1,
-                borderColor: palette.border,
-              })}
-            >
-              <Text style={{ fontSize: 18, fontWeight: "700", color: palette.text }}>
-                {item.display_name}
-              </Text>
-              <Text style={{ fontSize: 14, color: palette.muted, marginTop: 4 }}>
-                {item.equipment_access_type?.replace(/_/g, " ")}
-              </Text>
-            </Pressable>
-          ))
-        ) : (
-          <View style={{ padding: 20, alignItems: "center" }}>
-            <Text
-              style={{ color: palette.danger, textAlign: "center", marginBottom: 10 }}
-            >
-              No workout contexts found.
+        <Pressable
+          onPress={() => router.push("/workout-setup")}
+          style={({ pressed }) => ({
+            padding: 20,
+            borderRadius: 15, 
+            backgroundColor: pressed ? palette.cardPressed : palette.card,
+            borderWidth: 1,
+            borderColor: palette.border,
+            gap: 8,
+          })}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <IconSymbol name="dumbbell.fill" size={20} color={palette.accent} />
+            <Text style={{ fontSize: 18, fontWeight: "700", color: palette.text }}>
+              Create Workout
             </Text>
-            <Button title="Try Again" color={palette.accent} onPress={loadHome} />
           </View>
-        )}
+          <Text style={{ fontSize: 14, color: palette.muted }}>
+            Select location and equipment to generate the right workout.
+          </Text>
+        </Pressable>
       </View>
 
       <Pressable
