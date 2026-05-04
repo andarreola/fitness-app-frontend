@@ -11,10 +11,13 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors, labelOnTint } from "@/constants/theme";
+import { Colors } from "@/constants/theme";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { scrollContentInsetPadding } from "@/lib/scroll-padding";
 import { supabase } from "@/lib/supabase";
+import { fetchRecentWorkoutSessions } from "@/lib/workouts";
+import type { WorkoutSessionSummary } from "@/lib/workout-types";
 
 type BmiEntry = {
   id: string;
@@ -28,6 +31,7 @@ type BmiEntry = {
 type WorkoutSession = {
   id: string;
   started_at: string | null;
+  completed_at: string | null;
   status: string | null;
 };
 
@@ -38,11 +42,6 @@ type WorkoutSet = {
   actual_reps: number | null;
   actual_weight: number | null;
   created_at: string | null;
-};
-
-type ExerciseRow = {
-  id: string;
-  name: string;
 };
 
 function formatDateLabel(value: string) {
@@ -85,20 +84,29 @@ function appendError(prev: string | null, message: string) {
   return prev ? `${prev}\n${message}` : message;
 }
 
+function estimateSessionDurationMinutes(exerciseCount: number) {
+  return Math.max(20, exerciseCount * 8);
+}
+
+function estimateSessionCalories(exerciseCount: number) {
+  return Math.max(180, exerciseCount * 70);
+}
+
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
-  const isDark = (colorScheme ?? "light") === "dark";
+  const scheme = colorScheme === "dark" ? "dark" : "light";
+  const theme = Colors[scheme];
   const palette = {
-    background: theme.background,
-    surface: isDark ? "#1C1F23" : "#F8FAFC",
-    border: isDark ? "#31363F" : "#E5E7EB",
-    text: theme.text,
-    muted: theme.icon,
-    accent: theme.tint,
-    accentText: labelOnTint(isDark),
-    rowHighlight: isDark ? "#252A33" : "#EEF2F7",
+    background: theme.ui.screen,
+    surface: theme.ui.surface,
+    border: theme.ui.border,
+    text: theme.ui.textPrimary,
+    muted: theme.ui.textSecondary,
+    accent: theme.ui.highlight,
+    accentText: "#0A1A34",
+    rowHighlight: theme.ui.elevated,
+    chipBg: theme.ui.accentSoft,
   };
 
   const [loading, setLoading] = useState(true);
@@ -107,7 +115,7 @@ export default function ProgressScreen() {
   const [entries, setEntries] = useState<BmiEntry[]>([]);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [workoutSets, setWorkoutSets] = useState<WorkoutSet[]>([]);
-  const [exerciseMap, setExerciseMap] = useState<Record<string, string>>({});
+  const [recentSessions, setRecentSessions] = useState<WorkoutSessionSummary[]>([]);
 
   const loadData = useCallback(async () => {
     setError(null);
@@ -143,7 +151,7 @@ export default function ProgressScreen() {
 
     const { data: sessionRows, error: sessionsErr } = await supabase
       .from("workout_sessions")
-      .select("id, started_at, status")
+      .select("id, started_at, completed_at, status")
       .eq("user_id", user.id)
       .order("started_at", { ascending: false })
       .limit(365);
@@ -170,38 +178,17 @@ export default function ProgressScreen() {
         } else {
           const normalizedSets = (setRows ?? []) as WorkoutSet[];
           setWorkoutSets(normalizedSets);
-
-          const exerciseIds = Array.from(
-            new Set(
-              normalizedSets
-                .map((row) => row.exercise_id)
-                .filter((id): id is string => !!id),
-            ),
-          );
-
-          if (exerciseIds.length) {
-            const { data: exerciseRows, error: exercisesErr } = await supabase
-              .from("exercises")
-              .select("id, name")
-              .in("id", exerciseIds);
-
-            if (exercisesErr) {
-              setError((prev) => appendError(prev, exercisesErr.message));
-            } else {
-              const map: Record<string, string> = {};
-              ((exerciseRows ?? []) as ExerciseRow[]).forEach((row) => {
-                map[row.id] = row.name;
-              });
-              setExerciseMap(map);
-            }
-          } else {
-            setExerciseMap({});
-          }
         }
       } else {
         setWorkoutSets([]);
-        setExerciseMap({});
       }
+    }
+
+    try {
+      const recent = await fetchRecentWorkoutSessions(5);
+      setRecentSessions(recent);
+    } catch {
+      setRecentSessions([]);
     }
 
     setLoading(false);
@@ -281,109 +268,33 @@ export default function ProgressScreen() {
     };
   }, [sessions]);
 
-  const trendPoints = useMemo(() => entries.slice(0, 7).reverse(), [entries]);
+  const kpis = useMemo(() => {
+    const totalHours = sessions.reduce((sum, session) => {
+      if (!session.started_at || !session.completed_at) return sum;
+      const start = new Date(session.started_at).getTime();
+      const end = new Date(session.completed_at).getTime();
+      if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return sum;
+      return sum + (end - start) / (1000 * 60 * 60);
+    }, 0);
 
-  const milestones = useMemo(() => {
-    const list: { title: string; subtitle: string }[] = [];
-    if (!entries.length) return list;
+    const estimatedCaloriesFromSets = workoutSets.reduce((sum, set) => {
+      if (set.actual_reps === null || set.actual_weight === null) return sum;
+      return sum + set.actual_reps * set.actual_weight * 0.05;
+    }, 0);
 
-    const oldest = entries[entries.length - 1];
-    list.push({
-      title: "First BMI check-in",
-      subtitle: formatDateLabel(oldest.created_at),
-    });
+    const caloriesBurned = Math.round(
+      estimatedCaloriesFromSets > 0
+        ? estimatedCaloriesFromSets
+        : workoutMetrics.totalWorkouts * 250,
+    );
 
-    if (entries.length >= 5) {
-      list.push({
-        title: "Consistency milestone",
-        subtitle: "Completed 5 BMI check-ins",
-      });
-    }
-
-    if (entries.length >= 10) {
-      list.push({
-        title: "Progress milestone",
-        subtitle: "Completed 10 BMI check-ins",
-      });
-    }
-
-    if (workoutMetrics.totalWorkouts >= 1) {
-      const firstSession = [...sessions]
-        .filter((s) => !!s.started_at)
-        .sort((a, b) => {
-          const aTime = a.started_at ? new Date(a.started_at).getTime() : 0;
-          const bTime = b.started_at ? new Date(b.started_at).getTime() : 0;
-          return aTime - bTime;
-        })[0];
-
-      if (firstSession?.started_at) {
-        list.push({
-          title: "First workout completed",
-          subtitle: formatDateLabel(firstSession.started_at),
-        });
-      }
-    }
-
-    if (workoutMetrics.totalWorkouts >= 10) {
-      list.push({
-        title: "Workout milestone",
-        subtitle: "Completed 10 workouts",
-      });
-    }
-
-    return list;
-  }, [entries, sessions, workoutMetrics.totalWorkouts]);
-
-  const recentPrs = useMemo(() => {
-    const bestByExercise: Record<
-      string,
-      {
-        exerciseId: string;
-        name: string;
-        weight: number;
-        reps: number;
-        date: string | null;
-      }
-    > = {};
-
-    workoutSets.forEach((set) => {
-      if (
-        !set.exercise_id ||
-        set.actual_weight === null ||
-        set.actual_reps === null
-      )
-        return;
-      const current = bestByExercise[set.exercise_id];
-      const candidate = {
-        exerciseId: set.exercise_id,
-        name: exerciseMap[set.exercise_id] ?? "Unknown exercise",
-        weight: set.actual_weight,
-        reps: set.actual_reps,
-        date: set.created_at,
-      };
-
-      if (!current) {
-        bestByExercise[set.exercise_id] = candidate;
-        return;
-      }
-
-      if (candidate.weight > current.weight) {
-        bestByExercise[set.exercise_id] = candidate;
-        return;
-      }
-
-      if (
-        candidate.weight === current.weight &&
-        candidate.reps > current.reps
-      ) {
-        bestByExercise[set.exercise_id] = candidate;
-      }
-    });
-
-    return Object.values(bestByExercise)
-      .sort((a, b) => b.weight - a.weight)
-      .slice(0, 5);
-  }, [workoutSets, exerciseMap]);
+    return {
+      totalWorkouts: workoutMetrics.totalWorkouts,
+      totalHours: Math.round(totalHours),
+      caloriesBurned,
+      currentStreak: workoutMetrics.currentStreak,
+    };
+  }, [sessions, workoutSets, workoutMetrics]);
 
   const { paddingTop: scrollTop, paddingBottom: scrollBottom } =
     scrollContentInsetPadding(insets, 4, 16);
@@ -434,7 +345,7 @@ export default function ProgressScreen() {
             ]}
             onPress={() => router.back()}
           >
-            <Text style={{ color: palette.text, fontWeight: "700" }}>Back</Text>
+            <IconSymbol name="chevron.left" size={18} color={palette.text} />
           </Pressable>
           <Text style={[styles.title, { color: palette.text }]}>Progress</Text>
         </View>
@@ -462,96 +373,24 @@ export default function ProgressScreen() {
         ) : null}
 
         <View style={styles.kpiRow}>
-          <KpiCard
-            label="Current BMI"
-            value={metrics.latestBmi ? metrics.latestBmi.toFixed(1) : "--"}
-            subtitle={metrics.currentCategory ?? "No category yet"}
-            palette={palette}
-          />
-          <KpiCard
-            label="30-Day Change"
-            value={
-              metrics.delta30d === null
-                ? "--"
-                : `${metrics.delta30d > 0 ? "+" : ""}${metrics.delta30d}`
-            }
-            palette={palette}
-          />
+          <KpiCard iconName="figure.run" label="Total Workouts" value={String(kpis.totalWorkouts)} palette={palette} />
+          <KpiCard iconName="clock.fill" label="Total Hours" value={String(kpis.totalHours)} palette={palette} />
         </View>
-
         <View style={styles.kpiRow}>
-          <KpiCard
-            label="Workouts This Week"
-            value={String(workoutMetrics.workoutsThisWeek)}
-            palette={palette}
-          />
-          <KpiCard
-            label="Current Streak"
-            value={String(workoutMetrics.currentStreak)}
-            palette={palette}
-          />
+          <KpiCard iconName="flame.fill" label="Calories Burned" value={String(kpis.caloriesBurned)} palette={palette} />
+          <KpiCard iconName="trophy.fill" label="Current Streak" value={`${kpis.currentStreak} days`} palette={palette} />
         </View>
 
-        <View style={styles.kpiRow}>
-          <KpiCard
-            label="Total Workouts"
-            value={String(workoutMetrics.totalWorkouts)}
-            palette={palette}
-          />
-          <KpiCard
-            label="Total BMI Check-ins"
-            value={String(entries.length)}
-            palette={palette}
-          />
-        </View>
-
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: palette.surface, borderColor: palette.border },
-          ]}
-        >
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            BMI Trend (latest 7)
-          </Text>
-          {!trendPoints.length ? (
+        <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>Recent Workouts</Text>
+          {!recentSessions.length ? (
             <Text style={{ color: palette.muted }}>
-              No BMI data yet. Calculate and save BMI to see trends.
+              No workouts yet. Complete a workout session to populate this list.
             </Text>
           ) : (
-            trendPoints.map((point) => (
+            recentSessions.map((session) => (
               <View
-                key={point.id}
-                style={[styles.row, { borderBottomColor: palette.border }]}
-              >
-                <Text style={{ color: palette.text, fontWeight: "600" }}>
-                  {formatDateLabel(point.created_at)}
-                </Text>
-                <Text style={{ color: palette.text, fontWeight: "800" }}>
-                  {point.bmi.toFixed(1)}
-                </Text>
-              </View>
-            ))
-          )}
-        </View>
-
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: palette.surface, borderColor: palette.border },
-          ]}
-        >
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            Milestones
-          </Text>
-          {!milestones.length ? (
-            <Text style={{ color: palette.muted }}>
-              Complete your first BMI check-in to unlock milestones.
-            </Text>
-          ) : (
-            milestones.map((m) => (
-              <View
-                key={m.title}
+                key={session.id}
                 style={[
                   styles.milestone,
                   {
@@ -560,116 +399,57 @@ export default function ProgressScreen() {
                   },
                 ]}
               >
-                <Text style={{ color: palette.text, fontWeight: "700" }}>
-                  {m.title}
-                </Text>
-                <Text style={{ color: palette.muted, marginTop: 2 }}>
-                  {m.subtitle}
-                </Text>
-              </View>
-            ))
-          )}
-        </View>
-
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: palette.surface, borderColor: palette.border },
-          ]}
-        >
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            Recent Activity
-          </Text>
-          {!entries.length ? (
-            <Text style={{ color: palette.muted }}>
-              No recent activity yet. Save a BMI entry to start tracking your
-              progress.
-            </Text>
-          ) : (
-            entries.slice(0, 5).map((entry) => (
-              <View
-                key={entry.id}
-                style={[styles.row, { borderBottomColor: palette.border }]}
-              >
-                <View>
-                  <Text style={{ color: palette.text, fontWeight: "700" }}>
-                    BMI {entry.bmi.toFixed(1)}
+                <View style={styles.workoutHeaderRow}>
+                  <Text style={{ color: palette.text, fontWeight: "800", flex: 1 }}>
+                    {session.contextName}
                   </Text>
-                  <Text style={{ color: palette.muted, marginTop: 2 }}>
-                    {entry.category ?? getBmiCategory(entry.bmi)}
+                  <Text style={{ color: palette.muted, fontWeight: "700" }}>
+                    {session.startedAt ? formatDateLabel(session.startedAt) : "No date"}
                   </Text>
                 </View>
-                <Text style={{ color: palette.muted }}>
-                  {formatDateLabel(entry.created_at)}
+                <Text style={{ color: palette.muted, marginTop: 4 }}>
+                  {session.experienceLevelName ?? "General"} • {session.plannedExerciseCount} exercises
                 </Text>
-              </View>
-            ))
-          )}
-        </View>
-
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: palette.surface, borderColor: palette.border },
-          ]}
-        >
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            Workout Consistency
-          </Text>
-          {workoutMetrics.totalWorkouts === 0 ? (
-            <Text style={{ color: palette.muted }}>
-              No workouts logged yet. Start a workout session to build
-              consistency insights.
-            </Text>
-          ) : (
-            <>
-              <Text style={{ color: palette.text, fontWeight: "700" }}>
-                {workoutMetrics.workoutsThisWeek} workout(s) in the last 7 days
-              </Text>
-              <Text style={{ color: palette.muted, marginTop: 6 }}>
-                Current streak: {workoutMetrics.currentStreak} day(s)
-              </Text>
-              <Text style={{ color: palette.muted, marginTop: 2 }}>
-                Total sessions tracked: {workoutMetrics.totalWorkouts}
-              </Text>
-            </>
-          )}
-        </View>
-
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: palette.surface, borderColor: palette.border },
-          ]}
-        >
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            Recent PRs
-          </Text>
-          {!recentPrs.length ? (
-            <Text style={{ color: palette.muted }}>
-              No PR data yet. Log workout sets with actual weight and reps to
-              surface your top lifts.
-            </Text>
-          ) : (
-            recentPrs.map((pr) => (
-              <View
-                key={pr.exerciseId}
-                style={[styles.row, { borderBottomColor: palette.border }]}
-              >
-                <View style={{ flex: 1, paddingRight: 10 }}>
-                  <Text style={{ color: palette.text, fontWeight: "700" }}>
-                    {pr.name}
-                  </Text>
-                  <Text style={{ color: palette.muted, marginTop: 2 }}>
-                    {pr.date ? formatDateLabel(pr.date) : "Date unavailable"}
-                  </Text>
+                <View style={styles.metaStatsRow}>
+                  <View style={styles.metaStat}>
+                    <IconSymbol name="clock.fill" size={12} color={palette.muted} />
+                    <Text style={{ color: palette.muted, fontSize: 12, fontWeight: "700" }}>
+                      {estimateSessionDurationMinutes(session.plannedExerciseCount)} min
+                    </Text>
+                  </View>
+                  <View style={styles.metaStat}>
+                    <IconSymbol name="flame.fill" size={12} color={palette.muted} />
+                    <Text style={{ color: palette.muted, fontSize: 12, fontWeight: "700" }}>
+                      {estimateSessionCalories(session.plannedExerciseCount)} cal
+                    </Text>
+                  </View>
                 </View>
-                <Text style={{ color: palette.text, fontWeight: "800" }}>
-                  {pr.weight} kg x {pr.reps}
-                </Text>
+                <View style={styles.metaChipRow}>
+                  <View style={[styles.metaChip, { backgroundColor: palette.chipBg }]}>
+                    <Text style={{ color: palette.text, fontWeight: "700", fontSize: 12 }}>
+                      {session.status ?? "in_progress"}
+                    </Text>
+                  </View>
+                </View>
               </View>
             ))
           )}
+        </View>
+
+        <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>BMI Snapshot</Text>
+          <Text style={{ color: palette.text, fontWeight: "700" }}>
+            Current BMI: {metrics.latestBmi ? metrics.latestBmi.toFixed(1) : "--"}
+          </Text>
+          <Text style={{ color: palette.muted, marginTop: 4 }}>
+            30-day change:{" "}
+            {metrics.delta30d === null
+              ? "--"
+              : `${metrics.delta30d > 0 ? "+" : ""}${metrics.delta30d}`}
+          </Text>
+          <Text style={{ color: palette.muted, marginTop: 2 }}>
+            Category: {metrics.currentCategory ?? "No category yet"}
+          </Text>
         </View>
       </ScrollView>
     </View>
@@ -677,11 +457,13 @@ export default function ProgressScreen() {
 }
 
 function KpiCard({
+  iconName,
   label,
   value,
   subtitle,
   palette,
 }: {
+  iconName: "figure.run" | "clock.fill" | "flame.fill" | "trophy.fill";
   label: string;
   value: string;
   subtitle?: string;
@@ -694,6 +476,7 @@ function KpiCard({
         { backgroundColor: palette.surface, borderColor: palette.border },
       ]}
     >
+      <IconSymbol name={iconName} size={20} color={palette.muted} />
       <Text style={{ color: palette.muted, fontSize: 13 }}>{label}</Text>
       <Text
         style={{
@@ -719,9 +502,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 10 },
   backButton: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    borderRadius: 17,
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: { fontSize: 28, fontWeight: "800" },
   sectionTitle: { fontSize: 18, fontWeight: "800", marginBottom: 10 },
@@ -749,6 +534,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     marginBottom: 8,
+  },
+  workoutHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  metaChipRow: {
+    flexDirection: "row",
+    marginTop: 8,
+  },
+  metaStatsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 6,
+  },
+  metaStat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  metaChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   retryBtn: {
     marginTop: 10,

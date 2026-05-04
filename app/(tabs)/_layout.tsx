@@ -55,7 +55,8 @@ export default function TabLayout() {
     checkAuthTosAndOnboarding();
   }, [router]);
 
-  const bg = Colors[colorScheme ?? "light"].background;
+  const scheme = colorScheme === "dark" ? "dark" : "light";
+  const bg = Colors[scheme].ui.screen;
 
   if (!authChecked) {
     return (
@@ -77,7 +78,7 @@ export default function TabLayout() {
         >
           <ActivityIndicator
             size="large"
-            color={Colors[colorScheme ?? "light"].tint}
+            color={Colors[scheme].ui.highlight}
           />
         </View>
       </View>
@@ -88,11 +89,11 @@ export default function TabLayout() {
     <View style={{ flex: 1, backgroundColor: bg, paddingTop: insets.top }}>
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        tabBarInactiveTintColor: Colors[colorScheme ?? "light"].tabIconDefault,
+        tabBarActiveTintColor: Colors[scheme].ui.highlight,
+        tabBarInactiveTintColor: Colors[scheme].ui.textSecondary,
         tabBarStyle: {
-          backgroundColor: Colors[colorScheme ?? "light"].background,
-          borderTopColor: Colors[colorScheme ?? "light"].card,
+          backgroundColor: Colors[scheme].ui.surface,
+          borderTopColor: Colors[scheme].ui.border,
         },
         headerShown: false,
         tabBarButton: HapticTab,

@@ -38,19 +38,19 @@ function formatCount(count: number, isLegacy: boolean) {
 
 export default function WorkoutsScreen() {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
-  const isDark = (colorScheme ?? "light") === "dark";
+  const scheme = colorScheme === "dark" ? "dark" : "light";
+  const theme = Colors[scheme];
   const palette = useMemo(
     () => ({
-      background: theme.background,
-      card: isDark ? "#1C1F23" : "#F8FAFC",
-      border: isDark ? "#31363F" : "#E5E7EB",
-      text: theme.text,
-      muted: theme.icon,
-      accent: theme.tint,
-      chipBg: isDark ? "#252A33" : "#EEF2F7",
+      background: theme.ui.screen,
+      card: theme.ui.surface,
+      border: theme.ui.border,
+      text: theme.ui.textPrimary,
+      muted: theme.ui.textSecondary,
+      accent: theme.ui.highlight,
+      chipBg: theme.ui.elevated,
     }),
-    [theme, isDark],
+    [theme],
   );
 
   const [loading, setLoading] = useState(true);

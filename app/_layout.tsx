@@ -7,17 +7,18 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
-  const barStyle = (colorScheme ?? "light") === "dark" ? "light" : "dark";
+  const scheme = colorScheme === "dark" ? "dark" : "light";
+  const theme = Colors[scheme];
+  const barStyle = scheme === "dark" ? "light" : "dark";
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: theme.background }}>
-        <StatusBar style={barStyle} backgroundColor={theme.background} />
+      <View style={{ flex: 1, backgroundColor: theme.ui.screen }}>
+        <StatusBar style={barStyle} backgroundColor={theme.ui.screen} />
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { flex: 1, backgroundColor: theme.background },
+            contentStyle: { flex: 1, backgroundColor: theme.ui.screen },
           }}
         />
       </View>

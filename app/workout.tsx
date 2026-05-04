@@ -26,6 +26,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
 type SetDraft = {
   reps: string;
@@ -79,22 +81,24 @@ function rpeRange(exercise: WorkoutExerciseDetail) {
 }
 
 export default function WorkoutScreen() {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
-  const isDark = (colorScheme ?? "light") === "dark";
+  const scheme = colorScheme === "dark" ? "dark" : "light";
+  const theme = Colors[scheme];
+  const isDark = scheme === "dark";
   const palette = useMemo(
     () => ({
-      background: theme.background,
-      card: isDark ? "#1C1F23" : "#F8FAFC",
-      pressed: isDark ? "#252A33" : "#EEF2F7",
-      border: isDark ? "#31363F" : "#E5E7EB",
-      text: theme.text,
-      muted: theme.icon,
-      accent: theme.tint,
+      background: theme.ui.screen,
+      card: theme.ui.surface,
+      pressed: theme.ui.elevated,
+      border: theme.ui.border,
+      text: theme.ui.textPrimary,
+      muted: theme.ui.textSecondary,
+      accent: theme.ui.highlight,
       accentText: labelOnTint(isDark),
-      inputBg: isDark ? "#151718" : "#FFFFFF",
+      inputBg: theme.ui.elevated,
       danger: "#EF4444",
-      success: "#16A34A",
+      success: theme.ui.success,
     }),
     [theme, isDark],
   );
@@ -282,7 +286,7 @@ export default function WorkoutScreen() {
         />
       }
     >
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, { marginTop: Math.max(insets.top - 8, 4) }]}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [
@@ -293,7 +297,7 @@ export default function WorkoutScreen() {
             },
           ]}
         >
-          <Text style={{ color: palette.text, fontWeight: "700" }}>Back</Text>
+          <IconSymbol name="chevron.left" size={18} color={palette.text} />
         </Pressable>
 
         {session ? (
@@ -664,9 +668,11 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 17,
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
   },
   statusPill: {
     borderRadius: 8,
