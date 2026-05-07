@@ -1,11 +1,42 @@
-import React, {createContext, useState, useContext, ReactNode} from 'react';
-import {supabase} from '@/lib/supabase'
+import React, { createContext, useState, useContext, ReactNode } from 'react';
+import {supabase} from '@/lib/supabase';
 
 interface IntakeData {
-    full_name?: string;
-    age?: number;
-    fitness_goal?: string;
-    completed_onboarding?: boolean //might not need this 
+    // Question 1
+    weight?: number;
+    // Question 2
+    hasCoaching?: boolean;
+    // Question 3 - equipment from formal instruction
+    equipmentBodyWeight?: boolean;
+    equipmentResistanceMachines?: boolean;
+    equipmentDumbells?: boolean;
+    equipmentBarbell?: boolean;
+    // Question 4
+    abilityRating?: string;
+    // Question 5 - training location
+    locationHome?: boolean;
+    locationOutdoors?: boolean;
+    locationWork?: boolean;
+    locationGym?: boolean;
+    // Question 6 - available equipment
+    equipmentResistanceBands?: boolean;
+    equipmentPowerBands?: boolean;
+    equipmentPullUpBar?: boolean;
+    equipmentBarbells?: boolean;
+    equipmentDumbells?: boolean;
+    equipmentSquatRack?: boolean;
+    equipmentFlatBench?: boolean;
+    equipmentInclineBench?: boolean;
+    equipmentBoxes?: boolean;
+    equipmentMedicineBall?: boolean;
+    hasBumperPlates?: boolean;
+    heavyDumbbells?: boolean;
+    rackAdjustable?: boolean;
+    rackSafetyBars?: boolean;
+    // Question 7 - days per week
+    daysPerWeek?: number;
+    // Question 8 - time per day
+    timePerDay?: number;
 }
 
 interface IntakeContextType {
@@ -16,9 +47,9 @@ interface IntakeContextType {
 
 const IntakeContext = createContext<IntakeContextType | undefined>(undefined);
 
-export const IntakeProvider = ({children}: {children:ReactNode}) => {
+export const IntakeProvider = ({ children }: { children: ReactNode }) => {
     const [formData, setFormData] = useState<IntakeData>({});
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
     const updateFormData = async (newData: Partial<IntakeData>) => {
         setFormData(prev => ({...prev, ...newData}));
@@ -33,7 +64,7 @@ export const IntakeProvider = ({children}: {children:ReactNode}) => {
             {children}
         </IntakeContext.Provider>
     );
-};
+}
 
 export const useIntake = () => {
     const context = useContext(IntakeContext);

@@ -140,7 +140,7 @@ export default function QuestionSix() {
                 <Pressable style={[styles.backButton, { borderColor: theme.ui.border, backgroundColor: theme.ui.surface }]} onPress={handleBack}>
                     <IconSymbol name="chevron.left" size={16} color={theme.ui.textPrimary} />
                 </Pressable>
-                <Pressable style={[styles.nextButton, { backgroundColor: '#EEF8FF' }]} onPress={handleNext}>
+                <Pressable style={[styles.nextButton, { backgroundColor: theme.ui.highlight }]} onPress={handleNext}>
                     <Text style={styles.nextButtonText}>Continue with this equipment</Text>
                 </Pressable>
             </View>

@@ -127,7 +127,7 @@ export default function OnboardingOutcomeScreen() {
         );
       }
 
-      router.replace("/(tabs)");
+      router.replace("/intake/question-1");
     } catch (err: any) {
       Alert.alert("Error", err?.message ?? "An error occurred");
     } finally {
@@ -181,7 +181,7 @@ export default function OnboardingOutcomeScreen() {
         style={[styles.primaryButton, { backgroundColor: theme.tint, opacity: loading ? 0.6 : 1 }]}
       >
         <Text style={[styles.primaryButtonText, { color: labelOnTint(isDark) }]}>
-          {loading ? "Continuing..." : "Continue to Home"}
+          {loading ? "Continuing..." : "Continue"}
         </Text>
       </Pressable>
 
